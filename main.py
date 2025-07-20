@@ -31,6 +31,14 @@ async def cmd_handler(event):
             await event.reply(cmds[key])
 
 
+@client.on(events.NewMessage(outgoing=True, pattern='.left'))
+async def left_cmd(event):
+    logging.info("[left_cmd] triggered, setting timers")
+    await event.delete()
+    await event.reply(cmds['тк'])
+    await event.reply(cmds['ен'])
+
+
 def txt_to_sec(text):
     pattern = re.findall(r'(\d+)\s*(ч|м|с)', text, re.IGNORECASE)
 
@@ -98,7 +106,7 @@ async def dailyt_handler(event):
 
 
 async def init():
-    logging.info("setting timers")
+    logging.info("[init] setting timers")
     await client.send_message(target, cmds['тк'])
     await client.send_message(target, cmds['ен'])
 
