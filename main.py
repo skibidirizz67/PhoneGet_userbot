@@ -1,4 +1,4 @@
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 import logging
 from threading import Timer
 import re
@@ -13,9 +13,10 @@ f = open('api_hash.txt', 'r')
 api_hash = f.read()
 
 me = 5359995738
-target = me
+target = 7808172033
 
 card_timer = Timer(0, None)
+daily_timer = Timer(0, None)
 
 client = TelegramClient('anon', api_id, api_hash)
 
@@ -49,17 +50,20 @@ def txt_to_sec(text):
 
 @client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Вам выпал телефон!.*'))
 async def card_handler(event):
+    logging.info('[card_handler] triggered, sending cmd')
     await event.reply(cmds['тк'])
 
 
 async def send_msg(target, text):
     await client.send_message(target, text)
+    logging.info('[send_msg] sent "%s"', text)
 def schedule_msg(loop, target, text):
     asyncio.run_coroutine_threadsafe(send_msg(target, text), loop)
 
 
 @client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Вы сможете выбить карту еще раз через.*'))
 async def cardt_handler(event):
+    logging.info('[cardt_handler] triggered, scheduling cmd')
     global card_timer
     card_timer.cancel()
 
@@ -68,7 +72,44 @@ async def cardt_handler(event):
 
     card_timer = Timer(time, lambda: schedule_msg(loop, target, cmds['тк']))
     card_timer.start()
+    logging.info('[cardt_handler] waiting for %i seconds', time)
+
+
+@client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Ежедневные награды:.*'))
+async def daily_handler(event):
+    logging.info('[daily_handler] triggered, clicking btn')
+    await event.message.click(0, 0)
+    logging.info('[daily_handler] clicked, sending cmd')
+    await event.reply(cmds['ен'])
+
+
+@client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Новая награда будет доступна завтра.*'))
+async def dailyt_handler(event):
+    logging.info('[dailyt_handler] triggered, scheduling cmd')
+    global daily_timer
+    daily_timer.cancel()
+
+    time = txt_to_sec(event.text[event.text.rfind('з')+3:])
+    loop = asyncio.get_event_loop()
+
+    daily_timer = Timer(time, lambda: schedule_msg(loop, target, cmds['ен']))
+    daily_timer.start()
+    logging.info('[dailyt_handler] waiting for %i seconds', time)
+
+
+async def init():
+    logging.info("setting timers")
+    await client.send_message(target, cmds['тк'])
+    await client.send_message(target, cmds['ен'])
 
 
 client.start()
+logging.info("START complete")
+
+client.loop.run_until_complete(init())
+logging.info("INIT complete")
 client.run_until_disconnected()
+
+card_timer.cancel()
+daily_timer.cancel()
+logging.info("STOP complete")
