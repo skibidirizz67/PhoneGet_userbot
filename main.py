@@ -12,7 +12,6 @@ api_id = f.read()
 f = open('api_hash.txt', 'r')
 api_hash = f.read()
 
-me = 5359995738
 target = 7808172033
 
 card_timer = Timer(0, None)
@@ -21,7 +20,7 @@ daily_timer = Timer(0, None)
 client = TelegramClient('anon', api_id, api_hash)
 
 
-cmds = {'тк':'ТКарточка', 'та':'ТАкк', 'мо':'Мои телефоны', 'мт':'Магазин телефонов', 'му':'Мои улучшения', 'ап':'Апгрейд', 'ен':'Ежедневная награда', 'са':'/sellall'}
+cmds = {'тк':'ТКарточка', 'та':'ТАкк', 'мо':'Мои телефоны', 'мт':'Магазин телефонов', 'му':'Магазин улучшений', 'ап':'Апгрейд', 'ен':'Ежедневная награда', 'са':'/sellall'}
 @client.on(events.NewMessage(outgoing=True, pattern=r'\!'))
 async def cmd_handler(event):
     text = event.text[1:]
@@ -29,14 +28,6 @@ async def cmd_handler(event):
         if text == key:
             await event.delete()
             await event.reply(cmds[key])
-
-
-@client.on(events.NewMessage(outgoing=True, pattern='.left'))
-async def left_cmd(event):
-    logging.info("[left_cmd] triggered, setting timers")
-    await event.delete()
-    await event.reply(cmds['тк'])
-    await event.reply(cmds['ен'])
 
 
 def txt_to_sec(text):
@@ -60,6 +51,12 @@ def txt_to_sec(text):
 async def card_handler(event):
     logging.info('[card_handler] triggered, sending cmd')
     await event.reply(cmds['тк'])
+
+
+@client.on(events.NewMessage(from_users=target, pattern=r'(?is).*розыгрыш.*|.*подписка на каналы.*'))
+async def spam_handler(event):
+    logging.info('[spam_handler] triggered, deleting')
+    await event.delete()
 
 
 async def send_msg(target, text):
@@ -114,8 +111,9 @@ async def init():
 client.start()
 logging.info("START complete")
 
+logging.info("INIT")
 client.loop.run_until_complete(init())
-logging.info("INIT complete")
+logging.info("RUN")
 client.run_until_disconnected()
 
 card_timer.cancel()
