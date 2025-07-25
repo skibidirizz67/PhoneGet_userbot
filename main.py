@@ -5,14 +5,14 @@ import re
 from datetime import timedelta
 import asyncio
 
-logging.basicConfig(format='[%(asctime)s] [%(levelname)s]: %(message)s', level=logging.INFO)
+logging.basicConfig(format='[userbot UUID] [%(asctime)s] [%(levelname)s]: %(message)s', level=logging.INFO)
 
 f = open('api_id.txt', 'r')
 api_id = f.read()
 f = open('api_hash.txt', 'r')
 api_hash = f.read()
 
-target = 7808172033
+target = '@phonegetcardsbot'
 
 card_timer = Timer(0, None)
 daily_timer = Timer(0, None)
