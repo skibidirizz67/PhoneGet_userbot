@@ -1,4 +1,4 @@
-from telethon import TelegramClient, events, Button
+from telethon import TelegramClient, events
 import logging
 from threading import Timer
 import re
@@ -20,7 +20,9 @@ daily_timer = Timer(0, None)
 client = TelegramClient('anon', api_id, api_hash)
 
 
-cmds = {'тк':'ТКарточка', 'та':'ТАкк', 'мо':'Мои телефоны', 'мт':'Магазин телефонов', 'му':'Магазин улучшений', 'ап':'Апгрейд', 'ен':'Ежедневная награда', 'са':'/sellall'}
+cmds = {'тк':'ТКарточка', 'та':'ТАкк', 'мо':'Мои телефоны', 'мт':'Магазин телефонов', 'му':'Магазин улучшений', 'ап':'Апгрейд',
+'ен':'Ежедневная награда', 'са':'/sellall', 'тл':'Таблица лидеров', 'п':'/pay', 'ев':'/event', 'тр':'/trade',
+'км':'тк - ТКарточка\nта - ТАкк\nмо - Мои телефоны\nмт - Магазин телефонов\nму - Магазин улучшений\nап - Апргрейд\nен - Ежедневаня награда\nса - /sellall\nтл - Таблица лидеров\nп - /pay\nев - /event\nтр - /trade\nкм - Этот текст'}
 @client.on(events.NewMessage(outgoing=True, pattern=r'\!'))
 async def cmd_handler(event):
     text = event.text[1:]
