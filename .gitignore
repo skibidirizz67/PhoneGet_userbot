@@ -2,3 +2,4 @@ anon.session
 api_hash.txt
 api_id.txt
 phoneget_userbot.log
+__pycache__/
