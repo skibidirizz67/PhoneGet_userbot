@@ -10,18 +10,19 @@ logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, leve
 
 card_timer = Timer(0, None)
 daily_timer = Timer(0, None)
+# TODO? custom macros(remembers user's actions and replicates)(possibly json) and custom timers
 
 client = TelegramClient('anon', c.api_id, c.api_hash)
 
 
 logging.info('\n\nSTARTING')
 client.start()
-client.loop.run_until_complete(c.getme(client))
+client.loop.run_until_complete(c.set_patterns(client))
 logging.info('START complete')
 
 
 def txt_to_sec(text):
-    pattern = re.findall(r'(\d+)\s*(ч|м|с)', text, re.IGNORECASE)
+    pattern = re.findall(c.patterns['txt_to_sec'], text, re.IGNORECASE)
     h = m = s = 0
     for v, u in pattern:
         v = int(v)

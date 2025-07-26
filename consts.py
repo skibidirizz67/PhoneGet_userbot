@@ -1,3 +1,4 @@
+# TODO? move all customizable text to json
 f = open('api_id.txt', 'r')
 api_id = f.read()
 f = open('api_hash.txt', 'r')
@@ -10,17 +11,18 @@ target = '@phonegetcardsbot'
 me = None
 
 patterns = {}
-async def getme(client):
+async def set_patterns(client):
     global me, patterns
     me = await client.get_me()
     me = me.username
     patterns = {
-        'cmd_handler':r'\!',
-        'spam_handler':r'(?is).*розыгрыш.*|.*подписка на каналы.*',
-        'card_handler':rf'(?s)(?=.*@{me})(?=.*Вам выпал телефон!)',
-        'cardt_handler':rf'(?s)(?=.*@{me})(?=.*Вы сможете выбить карту еще раз через)',
-        'daily_handler':rf'(?s)(?=.*@{me})(?=.*Ежедневные награды:)',
-        'dailyt_handler':rf'(?s)(?=.*@{me})(?=.*Новая награда будет доступна завтра)'
+        'txt_to_sec'     : r'(\d+)\s*(ч|м|с)',
+        'cmd_handler'    : r'\!',
+        'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
+        'card_handler'   : rf'(?s)(?=.*@{me})(?=.*Вам выпал телефон!)',
+        'cardt_handler'  : rf'(?s)(?=.*@{me})(?=.*Вы сможете выбить карту еще раз через)',
+        'daily_handler'  : rf'(?s)(?=.*@{me})(?=.*Ежедневные награды:)',
+        'dailyt_handler' : rf'(?s)(?=.*@{me})(?=.*Новая награда будет доступна завтра)'
     }
 
 cmds = {
@@ -33,11 +35,11 @@ cmds = {
     **dict.fromkeys(['ен', 'er'], 'Ежедневная награда'),
     **dict.fromkeys(['са', 'sa'], '/sellall'),
     **dict.fromkeys(['тл', 'lt'], 'Таблица лидеров'),
-    **dict.fromkeys(['п', 'p'], '/pay'),
+    **dict.fromkeys(['п',  'p'],  '/pay'),
     **dict.fromkeys(['ев', 'ev'], '/event'),
     **dict.fromkeys(['тр', 'tr'], '/trade'),
     **dict.fromkeys(['км', 'h'],
-        '```тк|tc — ТКарточка\n'+
+    '```тк|tc — ТКарточка\n'+
         'та|ta — ТАкк\n'+
         'мо|mp — Мои телефоны\n'+
         'мт|ps — Магазин телефонов\n'+
