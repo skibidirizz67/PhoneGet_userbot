@@ -8,22 +8,18 @@ log_path = 'phoneget_userbot.log'
 log_format = '[%(asctime)s] [%(levelname)s]: %(message)s'
 
 target = '@phonegetcardsbot'
-me = None
+chats = '@phonegetcardsbot'
 
-patterns = {}
-async def set_patterns(client):
-    global me, patterns
-    me = await client.get_me()
-    me = me.username
-    patterns = {
-        'txt_to_sec'     : r'(\d+)\s*(ч|м|с)',
-        'cmd_handler'    : r'\!',
-        'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
-        'card_handler'   : rf'(?s)(?=.*@{me})(?=.*Вам выпал телефон!)',
-        'cardt_handler'  : rf'(?s)(?=.*@{me})(?=.*Вы сможете выбить карту еще раз через)',
-        'daily_handler'  : rf'(?s)(?=.*@{me})(?=.*Ежедневные награды:)',
-        'dailyt_handler' : rf'(?s)(?=.*@{me})(?=.*Новая награда будет доступна завтра)'
-    }
+patterns = {
+    'txt_to_sec'     : r'(\d+)\s*(ч|м|с)',
+    'cmd_handler'    : r'\!',
+    'macro_handler'  : r'\.',
+    'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
+    'card_handler'   : r'(?s)(?=.*Вам выпал телефон!)',
+    'cardt_handler'  : r'(?s)(?=.*Вы сможете выбить карту еще раз через)',
+    'daily_handler'  : r'(?s)(?=.*Ежедневные награды:)',
+    'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)'
+}
 
 cmds = {
     **dict.fromkeys(['тк', 'tc'], 'ТКарточка'),

@@ -15,12 +15,6 @@ daily_timer = Timer(0, None)
 client = TelegramClient('anon', c.api_id, c.api_hash)
 
 
-logging.info('\n\nSTARTING')
-client.start()
-client.loop.run_until_complete(c.set_patterns(client))
-logging.info('START complete')
-
-
 def txt_to_sec(text):
     pattern = re.findall(c.patterns['txt_to_sec'], text, re.IGNORECASE)
     h = m = s = 0
@@ -40,6 +34,20 @@ def schedule_msg(loop, target, text):
     asyncio.run_coroutine_threadsafe(send_msg(target, text), loop) # TODO: remake, idk feels wrong
 
 
+async def macro_buy(event):
+    async with client.conversation(event.chat_id) as conv:
+        await conv.send_message(c.cmds['ps'])
+        response = await conv.get_response()
+        await conv.send_message('ok')
+
+
+async def macro_upgrade(event):
+    async with client.conversation(event.chat_id) as conv:
+        await conv.send_message(c.cmds['up'])
+        response = await conv.get_response()
+        await conv.send_message('ok')
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
 async def cmd_handler(event):
     text = event.text[1:]
@@ -50,19 +58,28 @@ async def cmd_handler(event):
             return None
 
 
-@client.on(events.NewMessage(from_users=c.target, pattern=c.patterns['spam_handler']))
+@client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
+async def macro_handler(event):
+    text = event.text[1:]
+    if text == 'buy':
+        await macro_buy(event)
+    elif text == 'upgrade':
+        await macro_upgrade(event)
+
+
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
 async def spam_handler(event):
     logging.info('[spam_handler] triggered, deleting')
     await event.delete()
 
 
-@client.on(events.NewMessage(from_users=c.target, pattern=c.patterns['card_handler']))
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['card_handler']))
 async def card_handler(event):
     logging.info('[card_handler] triggered, sending cmd')
     await event.reply(c.cmds['tc'])
 
 
-@client.on(events.NewMessage(from_users=c.target, pattern=c.patterns['cardt_handler']))
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['cardt_handler']))
 async def cardt_handler(event):
     logging.info('[cardt_handler] triggered, scheduling cmd')
     global card_timer
@@ -76,7 +93,7 @@ async def cardt_handler(event):
     logging.info('[cardt_handler] waiting for %i seconds', time)
 
 
-@client.on(events.NewMessage(from_users=c.target, pattern=c.patterns['daily_handler']))
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['daily_handler']))
 async def daily_handler(event):
     logging.info('[daily_handler] triggered, clicking btn')
     await event.message.click(0, 0)
@@ -84,7 +101,7 @@ async def daily_handler(event):
     await event.reply(c.cmds['ен'])
 
 
-@client.on(events.NewMessage(from_users=c.target, pattern=c.patterns['dailyt_handler']))
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['dailyt_handler']))
 async def dailyt_handler(event):
     logging.info('[dailyt_handler] triggered, scheduling cmd')
     global daily_timer
@@ -111,6 +128,10 @@ def terminate(signum, frame):
     logging.info('STOP complete, terminating')
     sys.exit(0)
 
+
+logging.info('\n\nSTARTING')
+client.start()
+logging.info('START complete')
 
 logging.info('INIT')
 signal.signal(signal.SIGTERM, terminate)
