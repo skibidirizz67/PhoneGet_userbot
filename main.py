@@ -4,8 +4,9 @@ from threading import Timer
 import re
 from datetime import timedelta
 import asyncio
+import signal, sys
 
-logging.basicConfig(format='[userbot UUID] [%(asctime)s] [%(levelname)s]: %(message)s', level=logging.INFO)
+logging.basicConfig(filename='phoneget_userbot.log', filemode='a', format='[%(asctime)s] [%(levelname)s]: %(message)s', level=logging.INFO)
 
 f = open('api_id.txt', 'r')
 api_id = f.read()
@@ -19,10 +20,40 @@ daily_timer = Timer(0, None)
 
 client = TelegramClient('anon', api_id, api_hash)
 
+me = None
 
 cmds = {'тк':'ТКарточка', 'та':'ТАкк', 'мо':'Мои телефоны', 'мт':'Магазин телефонов', 'му':'Магазин улучшений', 'ап':'Апгрейд',
 'ен':'Ежедневная награда', 'са':'/sellall', 'тл':'Таблица лидеров', 'п':'/pay', 'ев':'/event', 'тр':'/trade',
 'км':'тк - ТКарточка\nта - ТАкк\nмо - Мои телефоны\nмт - Магазин телефонов\nму - Магазин улучшений\nап - Апргрейд\nен - Ежедневаня награда\nса - /sellall\nтл - Таблица лидеров\nп - /pay\nев - /event\nтр - /trade\nкм - Этот текст'}
+
+
+async def init():
+    global me
+    me = await client.get_me()
+    me = me.username
+
+    logging.info("[init] setting timers")
+    await client.send_message(target, cmds['тк'])
+    await client.send_message(target, cmds['ен'])
+
+
+def terminate(signum, frame):
+    card_timer.cancel()
+    daily_timer.cancel()
+    logging.info("STOP complete, terminating")
+    sys.exit(0)
+
+
+signal.signal(signal.SIGTERM, terminate)
+
+logging.info("\n\nSTARTING")
+client.start()
+logging.info("START complete")
+
+logging.info("INIT")
+client.loop.run_until_complete(init())
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=r'\!'))
 async def cmd_handler(event):
     text = event.text[1:]
@@ -49,7 +80,7 @@ def txt_to_sec(text):
     return timedelta(hours=h, minutes=m, seconds=s).total_seconds()
 
 
-@client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Вам выпал телефон!.*'))
+@client.on(events.NewMessage(from_users=target, pattern=rf'(?s)(?=.*@{me})(?=.*Вам выпал телефон!)'))
 async def card_handler(event):
     logging.info('[card_handler] triggered, sending cmd')
     await event.reply(cmds['тк'])
@@ -68,7 +99,7 @@ def schedule_msg(loop, target, text):
     asyncio.run_coroutine_threadsafe(send_msg(target, text), loop)
 
 
-@client.on(events.NewMessage(from_users=target, pattern=r'(?s).*Вы сможете выбить карту еще раз через.*'))
+@client.on(events.NewMessage(from_users=target, pattern=rf'(?s)(?=.*@{me})(?=.*Вы сможете выбить карту еще раз через)'))
 async def cardt_handler(event):
     logging.info('[cardt_handler] triggered, scheduling cmd')
     global card_timer
@@ -104,20 +135,5 @@ async def dailyt_handler(event):
     logging.info('[dailyt_handler] waiting for %i seconds', time)
 
 
-async def init():
-    logging.info("[init] setting timers")
-    await client.send_message(target, cmds['тк'])
-    await client.send_message(target, cmds['ен'])
-
-
-client.start()
-logging.info("START complete")
-
-logging.info("INIT")
-client.loop.run_until_complete(init())
 logging.info("RUN")
 client.run_until_disconnected()
-
-card_timer.cancel()
-daily_timer.cancel()
-logging.info("STOP complete")
