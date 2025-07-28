@@ -34,18 +34,48 @@ def schedule_msg(loop, target, text):
     asyncio.run_coroutine_threadsafe(send_msg(target, text), loop) # TODO: remake, idk feels wrong
 
 
-async def macro_buy(event):
-    async with client.conversation(event.chat_id) as conv:
-        await conv.send_message(c.cmds['ps'])
-        response = await conv.get_response()
-        await conv.send_message('ok')
+async def macro_buy(event, r, q):
+    logging.info('[macro_buy] %i | %i', r, q)
+    try:
+        async with client.conversation(event.chat_id, timeout=10) as conv:
+            await conv.send_message(c.cmds['ps'])
+            response = await conv.get_response()
+            await response.click(int(r/2), r%2)
+            response = await conv.get_edit()
+            await response.click(0, 0)
+            response = await conv.get_edit()
+            await response.click(1, 0)
+            response = await conv.get_edit()
+            await response.click(int(q/5), q%5)
+            response = await conv.get_edit()
+            await response.click(0, 0)
+    except TimeoutError:
+        logging.info('[macro_buy] timeout')
+        await event.reply('timeout, bot didn\'t respond in 10 seconds')
 
 
-async def macro_upgrade(event):
-    async with client.conversation(event.chat_id) as conv:
-        await conv.send_message(c.cmds['up'])
-        response = await conv.get_response()
-        await conv.send_message('ok')
+async def macro_upgrade(event, r, q):
+    logging.info('[macro_upgrade] %i | %i', r, q)
+    lost = 0
+    try:
+        async with client.conversation(event.chat_id, timeout=10) as conv:
+            for i in range(q):
+                await conv.send_message(c.cmds['up'])
+                resp = await conv.get_response()
+                await resp.click(int(r/2), r%2)
+                resp = await conv.get_edit()
+                await resp.click(0, 0)
+                resp = await conv.get_response()
+                await resp.click(0, 0)
+                resp = await conv.get_edit()
+                if 'Неудача!' in resp.text: lost += 1
+                logging.info('[macro_upgrade] %i complete', i)
+                #await asyncio.sleep(1)
+            await conv.send_message(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
+    except TimeoutError:
+        logging.info('[macro_buy] timeout, bot didn\'t respond in 10 seconds')
+        await event.reply('timeout')
+        await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
@@ -60,11 +90,21 @@ async def cmd_handler(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
 async def macro_handler(event):
-    text = event.text[1:]
-    if text == 'buy':
-        await macro_buy(event)
-    elif text == 'upgrade':
-        await macro_upgrade(event)
+    text = event.text[1:]+' '
+    r = 0
+    q = 9
+
+    if '-r' in text:
+        r = text[text.find('-r')+2:]
+        r = int(r[:r.find(' ')])
+    if '-q' in text:
+        q = text[text.find('-q')+2:]
+        q = int(q[:q.find(' ')])
+
+    if 'buy' in text:
+        await macro_buy(event, r, q-1)
+    elif 'upg' in text:
+        await macro_upgrade(event, r, q)
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
@@ -117,8 +157,8 @@ async def dailyt_handler(event):
 
 async def init():
     logging.info('[init] setting timers')
-    await client.send_message(c.target, c.cmds['тк'])
-    await client.send_message(c.target, c.cmds['ен'])
+    #await client.send_message(c.target, c.cmds['тк'])
+    #await client.send_message(c.target, c.cmds['ен'])
 
 
 def terminate(signum, frame):

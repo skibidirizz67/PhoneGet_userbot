@@ -34,6 +34,8 @@ cmds = {
     **dict.fromkeys(['п',  'p'],  '/pay'),
     **dict.fromkeys(['ев', 'ev'], '/event'),
     **dict.fromkeys(['тр', 'tr'], '/trade'),
+    **dict.fromkeys(['ав', 'av'], '/avito'),
+    **dict.fromkeys(['тф', 'tf'], '/tfarm'),
     **dict.fromkeys(['км', 'h'],
     '```тк|tc — ТКарточка\n'+
         'та|ta — ТАкк\n'+
@@ -47,5 +49,7 @@ cmds = {
         'п|p   — /pay\n'+
         'ев|ev — /event\n'+
         'тр|tr — /trade\n'+
+        'ав|av — /avito\n'+
+        'тф|tf — /tfarm\n'+
         'км|h  — This text\n```')
 }
