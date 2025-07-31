@@ -16,38 +16,37 @@ client = TelegramClient('anon', c.api_id, c.api_hash)
 
 
 def txt_to_sec(text):
-    pattern = re.findall(c.patterns['txt_to_sec'], text, re.IGNORECASE)
-    h = m = s = 0
-    for v, u in pattern:
-        v = int(v)
-        u = u.lower()
-        if u in 'ч': h += v
-        elif u in 'м': m += v
-        elif u in 'с': s += v
-    return timedelta(hours=h, minutes=m, seconds=s).total_seconds()
+    time = re.findall(c.patterns['txt_to_sec'], text)
+    return timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2])).total_seconds()
 
 
 async def send_msg(target, text):
     await client.send_message(target, text)
     logging.info('[send_msg] sent "%s"', text)
-def schedule_msg(loop, target, text):
-    asyncio.run_coroutine_threadsafe(send_msg(target, text), loop) # TODO: remake, idk feels wrong
 
 
 async def macro_buy(event, r, q):
     logging.info('[macro_buy] %i | %i', r, q)
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
+            response = None
             await conv.send_message(c.cmds['ps'])
-            response = await conv.get_response()
+            while True:
+                response = await conv.get_response()
+                if response.sender_id == c.target_id: break
             await response.click(int(r/2), r%2)
-            response = await conv.get_edit()
+            response = await conv.get_edit(response.id-1)
             await response.click(0, 0)
-            response = await conv.get_edit()
+            response = await conv.get_edit(response.id)
             await response.click(1, 0)
-            response = await conv.get_edit()
-            await response.click(int(q/5), q%5)
-            response = await conv.get_edit()
+            response = await conv.get_edit(response.id)
+            if response.buttons[int(q/5)][q%5].text == f'{q+1}':
+                await response.click(int(q/5), q%5)
+            else:
+                logging.info('[macro_buy] button text didn\'t match, cancelled')
+                await event.reply('button text didn\'t match command')
+                return
+            response = await conv.get_edit(response.id)
             await response.click(0, 0)
     except TimeoutError:
         logging.info('[macro_buy] timeout')
@@ -71,11 +70,12 @@ async def macro_upgrade(event, r, q):
                 if 'Неудача!' in resp.text: lost += 1
                 logging.info('[macro_upgrade] %i complete', i)
                 #await asyncio.sleep(1)
-            await conv.send_message(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
     except TimeoutError:
-        logging.info('[macro_buy] timeout, bot didn\'t respond in 10 seconds')
+        logging.error('[macro_buy] timeout, bot didn\'t respond in 10 seconds')
         await event.reply('timeout')
-        await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
+    except IndexError:
+        logging.error([f'[macro_buy] no button {r}'])
+    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
@@ -90,20 +90,15 @@ async def cmd_handler(event):
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
 async def macro_handler(event):
-    text = event.text[1:]+' '
-    r = 0
-    q = 9
+    macro = re.search(r'^\.([a-z]+)', event.text) # TOFIX: dot capturing
+    flags = dict(re.findall(r'-([a-z]{1})(\d+)', event.text))
 
-    if '-r' in text:
-        r = text[text.find('-r')+2:]
-        r = int(r[:r.find(' ')])
-    if '-q' in text:
-        q = text[text.find('-q')+2:]
-        q = int(q[:q.find(' ')])
+    r = int(flags.get('r', 0))
+    q = int(flags.get('q', 0))
 
-    if 'buy' in text:
+    if macro.group() == '.buy':
         await macro_buy(event, r, q-1)
-    elif 'upg' in text:
+    elif macro.group() == '.upg':
         await macro_upgrade(event, r, q)
 
 
@@ -125,10 +120,10 @@ async def cardt_handler(event):
     global card_timer
     card_timer.cancel()
 
-    time = txt_to_sec(event.text[event.text.rfind('з')+2:])
+    time = txt_to_sec(event.text)
     loop = asyncio.get_event_loop()
 
-    card_timer = Timer(time, lambda: schedule_msg(loop, c.target, c.cmds['тк']))
+    card_timer = Timer(time, lambda: Timer(time, lambda: asyncio.run_coroutine_threadsafe(send_msg(c.target, c.cmds['tc']), loop)))
     card_timer.start()
     logging.info('[cardt_handler] waiting for %i seconds', time)
 
@@ -147,12 +142,44 @@ async def dailyt_handler(event):
     global daily_timer
     daily_timer.cancel()
 
-    time = txt_to_sec(event.text[event.text.rfind('з')+3:])
+    time = txt_to_sec(event.text)
     loop = asyncio.get_event_loop()
 
-    daily_timer = Timer(time, lambda: schedule_msg(loop, c.target, c.cmds['ен']))
+    daily_timer = Timer(time, lambda: asyncio.run_coroutine_threadsafe(send_msg(c.target, c.cmds['er']), loop))
     daily_timer.start()
     logging.info('[dailyt_handler] waiting for %i seconds', time)
+
+
+@client.on(events.MessageEdited(from_users=c.target, chats=c.chats, pattern=r'(?s).*(@dikiy_opezdal|@ladzepo_yikid).*✅.*Вы'))
+async def tradeb_handler(event):
+    logging.info('matched, clicking')
+    await event.click(2, 0)
+
+
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler']))
+async def trade_handler(event):
+    logging.info('matched, confirming')
+    await event.reply(re.search(r'.*от @(.*)', event.text).group())
+    await event.click(0, 0)
+        
+
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['etrade_handler']))
+async def etrade_handler(event):
+    msg = await client.get_messages(event.chat_id, ids=event.id-3)
+    for u in c.tradelist:
+        if u in msg.text:
+            await event.click(0, 0)
+
+
+@client.on(events.NewMessage(outgoing=True, pattern=r'^\.cti'))
+async def farm_handler(event):
+    if event.is_reply:
+        reply = await event.get_reply_message()
+        cells = re.findall(r'сутки: (.*) ТОчек', reply.text)
+        total = 0
+        for c in cells:
+            total += int(re.sub(',', '', c))
+        await event.edit(f'Total daily income: {total}')
 
 
 async def init():

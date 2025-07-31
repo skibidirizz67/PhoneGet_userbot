@@ -8,18 +8,24 @@ log_path = 'phoneget_userbot.log'
 log_format = '[%(asctime)s] [%(levelname)s]: %(message)s'
 
 target = '@phonegetcardsbot'
+target_id = 7808172033
 chats = '@phonegetcardsbot'
 
+tradelist = ['dikiy_opezdal', 'ladzepo_yikid']
+
 patterns = {
-    'txt_to_sec'     : r'(\d+)\s*(ч|м|с)',
+    'txt_to_sec'     : r'(\d+)\s*(?:ч|м|с)',
     'cmd_handler'    : r'\!',
     'macro_handler'  : r'\.',
     'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
     'card_handler'   : r'(?s)(?=.*Вам выпал телефон!)',
     'cardt_handler'  : r'(?s)(?=.*Вы сможете выбить карту еще раз через)',
     'daily_handler'  : r'(?s)(?=.*Ежедневные награды:)',
-    'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)'
+    'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)',
+    'trade_handler'  : r'(?s)(?=.*Вам пришло предложение обмена)',
+    'etrade_handler' : r'(?s)(?=.*ПОДТВЕРДИТЕ ОБМЕН)'
 }
+for u in tradelist: patterns['trade_handler'] = patterns['trade_handler']+rf'(?=.*{u})'
 
 cmds = {
     **dict.fromkeys(['тк', 'tc'], 'ТКарточка'),
@@ -46,7 +52,7 @@ cmds = {
         'ен|er — Ежедневная награда\n'+
         'са|sa — /sellall\n'+
         'тл|lt — Таблица лидеров\n'+
-        'п|p   — /pay\n'+
+        'п |p  — /pay\n'+
         'ев|ev — /event\n'+
         'тр|tr — /trade\n'+
         'ав|av — /avito\n'+
