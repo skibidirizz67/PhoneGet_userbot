@@ -13,6 +13,15 @@ chats = '@phonegetcardsbot'
 
 tradelist = ['dikiy_opezdal', 'ladzepo_yikid']
 
+rars = {
+    0 : 'ширпотреб',
+    1 : 'необычный',
+    2 : 'редкий',
+    3 : 'сверхредкий',
+    4 : 'мистический',
+    5 : 'хроматический'
+}
+
 patterns = {
     'txt_to_sec'     : r'(\d+)\s*(?:ч|м|с)',
     'cmd_handler'    : r'\!',

@@ -29,25 +29,25 @@ async def macro_buy(event, r, q):
     logging.info('[macro_buy] %i | %i', r, q)
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
-            response = None
+            resp = None
             await conv.send_message(c.cmds['ps'])
             while True:
-                response = await conv.get_response()
-                if response.sender_id == c.target_id: break
-            await response.click(int(r/2), r%2)
-            response = await conv.get_edit(response.id-1)
-            await response.click(0, 0)
-            response = await conv.get_edit(response.id)
-            await response.click(1, 0)
-            response = await conv.get_edit(response.id)
-            if response.buttons[int(q/5)][q%5].text == f'{q+1}':
-                await response.click(int(q/5), q%5)
+                resp = await conv.get_response()
+                if resp.sender_id == c.target_id: break
+            await resp.click(int(r/2), r%2)
+            resp = await conv.get_edit(resp.id-1)
+            await resp.click(0, 0)
+            resp = await conv.get_edit(resp.id)
+            await resp.click(1, 0)
+            resp = await conv.get_edit(response.id)
+            if resp.buttons[int(q/5)][q%5].text == f'{q+1}':
+                await resp.click(int(q/5), q%5)
             else:
-                logging.info('[macro_buy] button text didn\'t match, cancelled')
-                await event.reply('button text didn\'t match command')
+                logging.info(f'[macro_buy] button text didn\'t match {q}, cancelled')
+                await event.reply(f'button text didn\'t match {q}')
                 return
-            response = await conv.get_edit(response.id)
-            await response.click(0, 0)
+            resp = await conv.get_edit(resp.id)
+            await resp.click(0, 0)
     except TimeoutError:
         logging.info('[macro_buy] timeout')
         await event.reply('timeout, bot didn\'t respond in 10 seconds')
@@ -56,26 +56,41 @@ async def macro_buy(event, r, q):
 async def macro_upgrade(event, r, q):
     logging.info('[macro_upgrade] %i | %i', r, q)
     lost = 0
+    upgraded = 0
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
+            resp = None
+            ismatch = False
             for i in range(q):
                 await conv.send_message(c.cmds['up'])
-                resp = await conv.get_response()
-                await resp.click(int(r/2), r%2)
-                resp = await conv.get_edit()
+                while True:
+                    resp = await conv.get_response()
+                    if resp.sender_id == c.target_id: break
+                for bs in resp.buttons:
+                    for b in bs:
+                        if c.rars[r] in b.text.lower():
+                            await b.click()
+                            ismatch = True
+                if not ismatch:
+                    logging.info(f'[macro_upgrade] button text didn\'t match {c.rars[r]}, cancelled')
+                    await event.reply(f'button text didn\'t match {c.rars[r]}')
+                    return
+                resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
-                resp = await conv.get_response()
+                while True:
+                    resp = await conv.get_response()
+                    if resp.sender_id == c.target_id: break
                 await resp.click(0, 0)
-                resp = await conv.get_edit()
+                resp = await conv.get_edit(resp.id-1)
                 if 'Неудача!' in resp.text: lost += 1
+                elif 'Успех!' in resp.text: upgraded += 1
                 logging.info('[macro_upgrade] %i complete', i)
-                #await asyncio.sleep(1)
     except TimeoutError:
         logging.error('[macro_buy] timeout, bot didn\'t respond in 10 seconds')
         await event.reply('timeout')
     except IndexError:
         logging.error([f'[macro_buy] no button {r}'])
-    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {q-lost}\nLost: {lost}\nRate: {(q-lost)/q}```')
+    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {(upgraded)/q}```')
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
