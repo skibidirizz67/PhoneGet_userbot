@@ -1,7 +1,7 @@
 from telethon import TelegramClient, events
 import logging, re
 from threading import Timer
-from datetime import timedelta
+from datetime import timedelta, datetime, time
 import asyncio, signal, sys
 import consts as c
 
@@ -10,7 +10,10 @@ logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, leve
 
 card_timer = Timer(0, None)
 daily_timer = Timer(0, None)
+farm_timer = Timer(0, None)
 # TODO? custom macros(remembers user's actions and replicates)(possibly json) and custom timers
+
+reset_time = time(0, 30, 0, 0)
 
 client = TelegramClient('anon', c.api_id, c.api_hash)
 
@@ -23,6 +26,8 @@ def txt_to_sec(text):
 async def send_msg(target, text):
     await client.send_message(target, text)
     logging.info('[send_msg] sent "%s"', text)
+def schedule_msg(loop, target, text):
+    asyncio.run_coroutine_threadsafe(send_msg(target, text), loop)
 
 
 async def macro_buy(event, r, q):
@@ -90,7 +95,11 @@ async def macro_upgrade(event, r, q):
         await event.reply('timeout')
     except IndexError:
         logging.error([f'[macro_buy] no button {r}'])
-    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {(upgraded)/q}```')
+    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {upgraded / lost}```')
+
+
+async def macro_sell(event, r, q):
+    pass
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
@@ -125,6 +134,8 @@ async def spam_handler(event):
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['card_handler']))
 async def card_handler(event):
+    if c.rars[0] in event.text.lower():
+        await event.reply('.upg -r0 -q1')
     logging.info('[card_handler] triggered, sending cmd')
     await event.reply(c.cmds['tc'])
 
@@ -135,12 +146,12 @@ async def cardt_handler(event):
     global card_timer
     card_timer.cancel()
 
-    time = txt_to_sec(event.text)
+    wait = txt_to_sec(event.text)
     loop = asyncio.get_event_loop()
 
-    card_timer = Timer(time, lambda: Timer(time, lambda: asyncio.run_coroutine_threadsafe(send_msg(c.target, c.cmds['tc']), loop)))
+    card_timer = Timer(wait, lambda: schedule_msg(loop, c.target, c.cmds['tc']))
     card_timer.start()
-    logging.info('[cardt_handler] waiting for %i seconds', time)
+    logging.info('[cardt_handler] waiting for %i seconds(%i m)', wait, int(wait/60))
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['daily_handler']))
@@ -157,12 +168,26 @@ async def dailyt_handler(event):
     global daily_timer
     daily_timer.cancel()
 
-    time = txt_to_sec(event.text)
+    wait = txt_to_sec(event.text)
     loop = asyncio.get_event_loop()
 
-    daily_timer = Timer(time, lambda: asyncio.run_coroutine_threadsafe(send_msg(c.target, c.cmds['er']), loop))
+    daily_timer = Timer(wait, lambda: schedule_msg(loop, c.target, c.cmds['er']))
     daily_timer.start()
-    logging.info('[dailyt_handler] waiting for %i seconds', time)
+    logging.info('[dailyt_handler] waiting for %i seconds(%i m)', wait, int(wait/60))
+
+
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=r'(?s)(?=.*Ваша майнинг ферма.*)'))
+async def farm_handler(event):
+    logging.info('[farm_handler] triggered')
+    income = re.search(r'фермой: (\d+),?(\d+)?', event.text)
+    if int(income.group(1) + (income.group(2) or '')) > 0:
+        logging.info('[farm_handler] getting income')
+        await event.click(len(event.buttons)-1, len(event.buttons[len(event.buttons)-1])-1)
+    now = datetime.now().time()
+    wait = reset_time.replace(hour = abs(now.hour - reset_time.hour), minute = abs(now.minute - reset_time.minute))
+    farm_timer = Timer((wait.hour*60+wait.minute)*60, lambda: schedule_msg(loop, c.target, c.cmds['tf']))
+    farm_timer.start()
+    logging.info(f'[farm_handler] waiting for {wait}')
 
 
 @client.on(events.MessageEdited(from_users=c.target, chats=c.chats, pattern=r'(?s).*(@dikiy_opezdal|@ladzepo_yikid).*✅.*Вы'))
@@ -187,7 +212,7 @@ async def etrade_handler(event):
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=r'^\.cti'))
-async def farm_handler(event):
+async def farm_calculate(event):
     if event.is_reply:
         reply = await event.get_reply_message()
         cells = re.findall(r'сутки: (.*) ТОчек', reply.text)
