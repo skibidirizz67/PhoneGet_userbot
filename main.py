@@ -48,15 +48,15 @@ async def macro_buy(event, r, q):
             resp = await conv.get_edit(resp.id-1)
             await resp.click(1, 0)
             resp = await conv.get_edit(resp.id-1)
-            if type(q) == int:
+            if q < 0:
+                await resp.click(len(resp.buttons)-2, len(resp.buttons[len(resp.buttons)-2])-1)
+            else:
                 if resp.buttons[int(q/5)][q%5].text == f'{q+1}':
                     await resp.click(int(q/5), q%5)
                 else:
                     logging.info(f'button text didn\'t match {q}, cancelled')
                     await event.reply(f'button text didn\'t match {q}')
                     return
-            elif q < 0:
-                await resp.click(len(resp.buttons)-1, len(resp.buttons[len(resp.buttons)-1])-1)
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
     except TimeoutError:
@@ -67,7 +67,7 @@ async def macro_buy(event, r, q):
         await event.reply(f'button text didn\'t match {q}')
 
 
-async def macro_upgrade(event, r, q):
+async def macro_upgrade(event, r, q): # TOFIX: ismatch doesn't work properly
     logging.info('%i | %i', r, q)
     lost = 0
     upgraded = 0
@@ -104,7 +104,7 @@ async def macro_upgrade(event, r, q):
         await event.reply('timeout, bot didn\'t respond in 10 seconds')
     except IndexError:
         logging.error([f'no button {r}'])
-    await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {upgraded / lost}```')
+    await event.reply(f'```Statistics\n\nTotal: {'all' if q==65536 else q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {upgraded / (lost+upgraded)}```')
 
 
 async def macro_sell(event, r, q): # TODO: check if works
@@ -113,7 +113,7 @@ async def macro_sell(event, r, q): # TODO: check if works
     ismatch = False
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
-            for i in range(q):
+            for i in range(1 if q<0 else q):
                 if q < 0: await conv.send_message(c.cmds['sa'])
                 else: await conv.send_message(c.cmds['mp'])
                 while True:
@@ -128,12 +128,19 @@ async def macro_sell(event, r, q): # TODO: check if works
                     logging.info(f'button text didn\'t match {c.rars[r]}, cancelled')
                     await event.reply(f'button text didn\'t match {c.rars[r]}')
                     return
+                if q < 0:
+                    while True:
+                        resp = await conv.get_response()
+                        if resp.sender_id == c.target_id: break
+                    await resp.click(0, 0)
+                    return
+                else: resp = await conv.get_edit(resp.id-1)
+                await resp.click(0, 0)
                 resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
-                if q < 0: return
-                resp = await conv.get_edit(resp.id-1)
-                await resp.click(0, 0)
-                resp = await conv.get_edit(resp.id-1)
+                while True:
+                    resp = await conv.get_response()
+                    if resp.sender_id == c.target_id: break
                 await resp.click(0, 0)
     except TimeoutError:
         logging.info('timeout')
@@ -153,19 +160,22 @@ async def cmd_handler(event):
             return None
 
 
-@client.on(outgoing=True, events.NewMessage(pattern=c.patterns['macro_handler']))
+@client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
 async def macro_handler(event):
     macro = re.search(r'^\.([a-z]+)', event.text) # TOFIX: dot capturing
-    flags = dict(re.findall(r'-([a-z]{1})(\d+)', event.text))
+    flags = dict(re.findall(r'-([a-z]{1})(-?\d+)', event.text)) # TODO: single group
 
     r = int(flags.get('r', 0))
     q = int(flags.get('q', 0))
+    logging.info(q)
 
     if macro.group() == '.buy':
         await macro_buy(event, r, q-1)
     elif macro.group() == '.upg':
         if q < 0: q = 2**16
         await macro_upgrade(event, r, q)
+    elif macro.group() == '.sell':
+        await macro_sell(event, r, q)
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
