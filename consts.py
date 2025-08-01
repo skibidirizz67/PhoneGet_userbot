@@ -5,7 +5,7 @@ f = open('api_hash.txt', 'r')
 api_hash = f.read()
 
 log_path = 'phoneget_userbot.log'
-log_format = '[%(asctime)s] [%(levelname)s]: %(message)s'
+log_format = '[%(asctime)s] [%(levelname)s] [%(funcName)s]: %(message)s'
 
 target = '@phonegetcardsbot'
 target_id = 7808172033

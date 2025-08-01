@@ -1,7 +1,9 @@
+# TODO: phones DB
+# TODO: avito sniffer
 from telethon import TelegramClient, events
 import logging, re
 from threading import Timer
-from datetime import timedelta, datetime, time
+from datetime import timedelta, datetime, time, date
 import asyncio, signal, sys
 import consts as c
 
@@ -11,6 +13,7 @@ logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, leve
 card_timer = Timer(0, None)
 daily_timer = Timer(0, None)
 farm_timer = Timer(0, None)
+buy_timer = Timer(0, None)
 # TODO? custom macros(remembers user's actions and replicates)(possibly json) and custom timers
 
 reset_time = time(0, 30, 0, 0)
@@ -25,16 +28,16 @@ def txt_to_sec(text):
 
 async def send_msg(target, text):
     await client.send_message(target, text)
-    logging.info('[send_msg] sent "%s"', text)
+    logging.info('sent "%s"', text)
 def schedule_msg(loop, target, text):
     asyncio.run_coroutine_threadsafe(send_msg(target, text), loop)
 
 
 async def macro_buy(event, r, q):
-    logging.info('[macro_buy] %i | %i', r, q)
+    logging.info('%i | %i', r, q)
+    resp = None
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
-            resp = None
             await conv.send_message(c.cmds['ps'])
             while True:
                 resp = await conv.get_response()
@@ -42,30 +45,36 @@ async def macro_buy(event, r, q):
             await resp.click(int(r/2), r%2)
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
-            resp = await conv.get_edit(resp.id)
+            resp = await conv.get_edit(resp.id-1)
             await resp.click(1, 0)
-            resp = await conv.get_edit(response.id)
-            if resp.buttons[int(q/5)][q%5].text == f'{q+1}':
-                await resp.click(int(q/5), q%5)
-            else:
-                logging.info(f'[macro_buy] button text didn\'t match {q}, cancelled')
-                await event.reply(f'button text didn\'t match {q}')
-                return
-            resp = await conv.get_edit(resp.id)
+            resp = await conv.get_edit(resp.id-1)
+            if type(q) == int:
+                if resp.buttons[int(q/5)][q%5].text == f'{q+1}':
+                    await resp.click(int(q/5), q%5)
+                else:
+                    logging.info(f'button text didn\'t match {q}, cancelled')
+                    await event.reply(f'button text didn\'t match {q}')
+                    return
+            elif q < 0:
+                await resp.click(len(resp.buttons)-1, len(resp.buttons[len(resp.buttons)-1])-1)
+            resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
     except TimeoutError:
-        logging.info('[macro_buy] timeout')
+        logging.info('timeout')
         await event.reply('timeout, bot didn\'t respond in 10 seconds')
+    except IndexError:
+        logging.error([f'no button {q}'])
+        await event.reply(f'button text didn\'t match {q}')
 
 
 async def macro_upgrade(event, r, q):
-    logging.info('[macro_upgrade] %i | %i', r, q)
+    logging.info('%i | %i', r, q)
     lost = 0
     upgraded = 0
+    resp = None
+    ismatch = False
     try:
         async with client.conversation(event.chat_id, timeout=10) as conv:
-            resp = None
-            ismatch = False
             for i in range(q):
                 await conv.send_message(c.cmds['up'])
                 while True:
@@ -77,7 +86,7 @@ async def macro_upgrade(event, r, q):
                             await b.click()
                             ismatch = True
                 if not ismatch:
-                    logging.info(f'[macro_upgrade] button text didn\'t match {c.rars[r]}, cancelled')
+                    logging.info(f'button text didn\'t match {c.rars[r]}, cancelled')
                     await event.reply(f'button text didn\'t match {c.rars[r]}')
                     return
                 resp = await conv.get_edit(resp.id-1)
@@ -89,17 +98,49 @@ async def macro_upgrade(event, r, q):
                 resp = await conv.get_edit(resp.id-1)
                 if 'Неудача!' in resp.text: lost += 1
                 elif 'Успех!' in resp.text: upgraded += 1
-                logging.info('[macro_upgrade] %i complete', i)
+                logging.info('%i complete', i)
     except TimeoutError:
-        logging.error('[macro_buy] timeout, bot didn\'t respond in 10 seconds')
-        await event.reply('timeout')
+        logging.error('timeout')
+        await event.reply('timeout, bot didn\'t respond in 10 seconds')
     except IndexError:
-        logging.error([f'[macro_buy] no button {r}'])
+        logging.error([f'no button {r}'])
     await event.reply(f'```Statistics\n\nTotal: {q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {upgraded / lost}```')
 
 
-async def macro_sell(event, r, q):
-    pass
+async def macro_sell(event, r, q): # TODO: check if works
+    logging.info('%i | %i', r, q)
+    resp = None
+    ismatch = False
+    try:
+        async with client.conversation(event.chat_id, timeout=10) as conv:
+            for i in range(q):
+                if q < 0: await conv.send_message(c.cmds['sa'])
+                else: await conv.send_message(c.cmds['mp'])
+                while True:
+                    resp = await conv.get_response()
+                    if resp.sender_id == c.target_id: break
+                for bs in resp.buttons:
+                    for b in bs:
+                        if c.rars[r] in b.text.lower():
+                            await b.click()
+                            ismatch = True
+                if not ismatch:
+                    logging.info(f'button text didn\'t match {c.rars[r]}, cancelled')
+                    await event.reply(f'button text didn\'t match {c.rars[r]}')
+                    return
+                resp = await conv.get_edit(resp.id-1)
+                await resp.click(0, 0)
+                if q < 0: return
+                resp = await conv.get_edit(resp.id-1)
+                await resp.click(0, 0)
+                resp = await conv.get_edit(resp.id-1)
+                await resp.click(0, 0)
+    except TimeoutError:
+        logging.info('timeout')
+        await event.reply('timeout, bot didn\'t respond in 10 seconds')
+    except IndexError:
+        logging.error([f'no button {q}'])
+        await event.reply(f'button text didn\'t match {q}')
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
@@ -112,7 +153,7 @@ async def cmd_handler(event):
             return None
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
+@client.on(outgoing=True, events.NewMessage(pattern=c.patterns['macro_handler']))
 async def macro_handler(event):
     macro = re.search(r'^\.([a-z]+)', event.text) # TOFIX: dot capturing
     flags = dict(re.findall(r'-([a-z]{1})(\d+)', event.text))
@@ -123,26 +164,27 @@ async def macro_handler(event):
     if macro.group() == '.buy':
         await macro_buy(event, r, q-1)
     elif macro.group() == '.upg':
+        if q < 0: q = 2**16
         await macro_upgrade(event, r, q)
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
 async def spam_handler(event):
-    logging.info('[spam_handler] triggered, deleting')
+    logging.info('triggered, deleting')
     await event.delete()
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['card_handler']))
 async def card_handler(event):
-    if c.rars[0] in event.text.lower():
-        await event.reply('.upg -r0 -q1')
-    logging.info('[card_handler] triggered, sending cmd')
+    if c.rars[0] in event.text.lower(): # TODO: finish smart card management
+        await macro_upgrade(event, 0, 1)
+    logging.info('triggered, sending cmd')
     await event.reply(c.cmds['tc'])
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['cardt_handler']))
 async def cardt_handler(event):
-    logging.info('[cardt_handler] triggered, scheduling cmd')
+    logging.info('triggered, scheduling cmd')
     global card_timer
     card_timer.cancel()
 
@@ -151,20 +193,20 @@ async def cardt_handler(event):
 
     card_timer = Timer(wait, lambda: schedule_msg(loop, c.target, c.cmds['tc']))
     card_timer.start()
-    logging.info('[cardt_handler] waiting for %i seconds(%i m)', wait, int(wait/60))
+    logging.info('waiting for %i seconds(%i m)', wait, int(wait/60))
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['daily_handler']))
 async def daily_handler(event):
-    logging.info('[daily_handler] triggered, clicking btn')
+    logging.info('triggered, clicking btn')
     await event.message.click(0, 0)
-    logging.info('[daily_handler] clicked, sending cmd')
+    logging.info('clicked, sending cmd')
     await event.reply(c.cmds['ен'])
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['dailyt_handler']))
 async def dailyt_handler(event):
-    logging.info('[dailyt_handler] triggered, scheduling cmd')
+    logging.info('triggered, scheduling cmd')
     global daily_timer
     daily_timer.cancel()
 
@@ -173,21 +215,34 @@ async def dailyt_handler(event):
 
     daily_timer = Timer(wait, lambda: schedule_msg(loop, c.target, c.cmds['er']))
     daily_timer.start()
-    logging.info('[dailyt_handler] waiting for %i seconds(%i m)', wait, int(wait/60))
+    logging.info('waiting for %i seconds(%i m)', wait, int(wait/60))
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=r'(?s)(?=.*Ваша майнинг ферма.*)'))
-async def farm_handler(event):
-    logging.info('[farm_handler] triggered')
+async def farm_handler(event): # TODO? possibly merge with other reset events
+    logging.info('triggered')
     income = re.search(r'фермой: (\d+),?(\d+)?', event.text)
     if int(income.group(1) + (income.group(2) or '')) > 0:
-        logging.info('[farm_handler] getting income')
+        logging.info('getting income')
         await event.click(len(event.buttons)-1, len(event.buttons[len(event.buttons)-1])-1)
-    now = datetime.now().time()
-    wait = reset_time.replace(hour = abs(now.hour - reset_time.hour), minute = abs(now.minute - reset_time.minute))
-    farm_timer = Timer((wait.hour*60+wait.minute)*60, lambda: schedule_msg(loop, c.target, c.cmds['tf']))
+    wait = datetime.combine(date.min, reset_time) - datetime.combine(date.min, datetime.now().time())
+    if wait < timedelta(0):
+        wait = timedelta(hours=24) + wait
+    loop = asyncio.get_event_loop()
+    farm_timer = Timer(wait.total_seconds(), lambda: schedule_msg(loop, c.target, c.cmds['tf']))
     farm_timer.start()
-    logging.info(f'[farm_handler] waiting for {wait}')
+    logging.info(f'waiting for {wait}')
+
+
+async def buy_handler(event, r, q): # TOFIX: it doesn't work at all
+    logging.info('triggered')
+    wait = datetime.combine(date.min, reset_time) - datetime.combine(date.min, datetime.now().time())
+    if wait < timedelta(0):
+        wait = timedelta(hours=24) + wait
+    loop = asyncio.get_event_loop()
+    buy_timer = Timer(wait.total_seconds(), lambda: schedule_buy(loop, event, r, q))
+    buy_timer.start()
+    logging.info(f'waiting for {wait}')
 
 
 @client.on(events.MessageEdited(from_users=c.target, chats=c.chats, pattern=r'(?s).*(@dikiy_opezdal|@ladzepo_yikid).*✅.*Вы'))
@@ -223,7 +278,7 @@ async def farm_calculate(event):
 
 
 async def init():
-    logging.info('[init] setting timers')
+    logging.info('setting timers')
     #await client.send_message(c.target, c.cmds['тк'])
     #await client.send_message(c.target, c.cmds['ен'])
 
