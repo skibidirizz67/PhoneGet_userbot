@@ -6,6 +6,7 @@ from threading import Timer
 from datetime import timedelta, datetime, time, date
 import asyncio, signal, sys
 import consts as c
+import json
 
 
 logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, level=logging.INFO)
@@ -285,6 +286,49 @@ async def farm_calculate(event):
         for c in cells:
             total += int(re.sub(',', '', c))
         await event.edit(f'Total daily income: {total}')
+
+
+@client.on(events.NewMessage(outgoing=True, pattern=r'^createDB'))
+async def create_phonesDB(event):
+    logging.info('creating phones DB')
+    resp = None
+    pattern = r'(.*) \((\d+) ТОчек\)'
+    phonesDB = {
+        0: {},
+        1: {},
+        2: {},
+        3: {},
+        4: {},
+        5: {}
+    }
+    async with client.conversation(event.chat_id) as conv:
+        await conv.send_message(c.cmds['ps'])
+        while True:
+            resp = await conv.get_response()
+            if resp.sender_id == c.target_id: break
+        r = 0
+        for bs in resp.buttons:
+            for b in bs:
+                await b.click()
+                resp = await conv.get_edit(resp.id-1)
+                while '➡️' in resp.buttons[len(resp.buttons)-2][2].text:
+                    for ps in resp.buttons:
+                        for p in ps:
+                            if 'ТОчек' in p.text:
+                                phone = re.search(pattern, p.text)
+                                phonesDB[r][phone.group(1)] = int(phone.group(2))
+                    await resp.buttons[len(resp.buttons)-2][2].click()
+                    resp = await conv.get_edit(resp.id-1)
+                    await asyncio.sleep(1)
+                await resp.buttons[len(resp.buttons)-1][0].click()
+                resp = await conv.get_edit(resp.id-1)
+                r += 1
+    with open('phonesDB.json', 'w') as f:
+        json.dump(phonesDB, f, indent=4)
+
+
+async def avito_sniff(event): # TODO: develop idea
+    pass
 
 
 async def init():
