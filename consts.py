@@ -26,17 +26,15 @@ rars = {
 
 patterns = {
     'txt_to_sec'     : r'(\d+)\s*(?:ч|м|с)',
-    'cmd_handler'    : r'\!',
-    'macro_handler'  : r'\.',
+    'cmd_handler'    : r'^!(.+)',
+    'macro_handler'  : r'^\.(.+)', # TODO
     'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
     'card_handler'   : r'(?s)(?=.*Вам выпал телефон!)',
     'cardt_handler'  : r'(?s)(?=.*Вы сможете выбить карту еще раз через)',
     'daily_handler'  : r'(?s)(?=.*Ежедневные награды:)',
     'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)',
-    'trade_handler'  : r'(?s)(?=.*Вам пришло предложение обмена)',
-    'etrade_handler' : r'(?s)(?=.*ПОДТВЕРДИТЕ ОБМЕН)'
+    'trade_handler'  : r'(?s).*(от @(dikiy_opezdal|ladzepo_yikid)|(@(dikiy_opezdal|ladzepo_yikid).*✅.*Вы|ПОДТВЕРДИТЕ)).*'
 }
-for u in tradelist: patterns['trade_handler'] = patterns['trade_handler']+rf'(?=.*{u})'
 
 cmds = {
     **dict.fromkeys(['тк', 'tc'], 'ТКарточка'),
