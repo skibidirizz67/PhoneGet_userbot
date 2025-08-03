@@ -1,5 +1,3 @@
-# TODO: phones DB
-# TODO: avito sniffer
 from telethon import TelegramClient, events
 import logging, re
 from threading import Timer
@@ -103,9 +101,9 @@ async def macro_upgrade(event, r, q): # TOFIX: ismatch doesn't work properly
     except TimeoutError:
         logging.error('timeout')
         await event.reply('timeout, bot didn\'t respond in 10 seconds')
-    except IndexError:
+    except (IndexError, TypeError):
         logging.error([f'no button {r}'])
-    await event.reply(f'```Statistics\n\nTotal: {'all' if q==65536 else q}\nUpgraded: {upgraded}\nLost: {lost}\nRate: {upgraded / (lost+upgraded)}```')
+    await event.reply(f'```statistics\n==========\n{upgraded} / {lost+upgraded} => {upgraded/(lost+upgraded)}```') # \n\n{upgraded_sum} - {source_sum} => {upgraded_sum-source_sum} [x{upgraded_sum/source_sum}]
 
 
 async def macro_sell(event, r, q): # TODO: check if works
@@ -299,7 +297,32 @@ async def create_phonesDB(event):
         2: {},
         3: {},
         4: {},
-        5: {}
+        5: {},
+        6: {
+            'Xiaomi 15 Diamond Edition': 500000,
+            'Xiaomi Mi Mix Alpha': 500000,
+            'Samsung Galaxy S21 Olympic Edition': 500000,
+            'Samsung K Zoom': 500000,
+            'Xiaomi Poco X3': 500000,
+            'Яндекс.Телефон': 500000,
+            'OnePlus 5T Star Wars Limited Edition': 500000,
+            'OnePlus Ace 5 Extreme Edition': 500000,
+            'OPPO Find X Lamborghini': 500000,
+            'Xiaomi Redmi Note 9A': 500000,
+            'Samsung Galaxy Flip 6 Olympic Edition': 500000,
+            'Телефон дизайнера: Nothing Phone 1': 500000,
+            'Nokia 3310': 500000,
+            'Apple Iphone 5s Gold Edition': 500000,
+            'ZTE Nubia Music': 500000,
+            'Light L16': 500000
+        },
+        7: {
+            'Apple iPhone 9': 3000000,
+            'Bubblephone Concept': 3000000,
+            'Nokia Lumia McLaren': 3000000,
+            'Google Project Ara': 3000000,
+            'Nokia 888 Concept': 3000000
+        }
     }
     async with client.conversation(event.chat_id) as conv:
         await conv.send_message(c.cmds['ps'])
