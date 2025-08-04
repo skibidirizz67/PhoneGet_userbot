@@ -11,7 +11,7 @@ target = '@phonegetcardsbot'
 target_id = 7808172033
 chats = '@phonegetcardsbot'
 
-tradelist = ['dikiy_opezdal', 'ladzepo_yikid']
+tradelist = ['dikiy_opezdal', 'ladzepo_yikid'] # TODO
 
 rars = {
     0: 'ширп',
@@ -33,7 +33,7 @@ patterns = {
     'cardt_handler'  : r'(?s)(?=.*Вы сможете выбить карту еще раз через)',
     'daily_handler'  : r'(?s)(?=.*Ежедневные награды:)',
     'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)',
-    'trade_handler'  : r'(?s).*(от @(dikiy_opezdal|ladzepo_yikid)|(@(dikiy_opezdal|ladzepo_yikid).*✅.*Вы|ПОДТВЕРДИТЕ)).*'
+    'trade_handler'  : r'(?s).*(от @(dikiy_opezdal|ladzepo_yikid)|(@(dikiy_opezdal|ladzepo_yikid).*✅.*Вы|ПОДТВЕРДИТЕ)).*' # TODO
 }
 
 cmds = {

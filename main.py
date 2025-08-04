@@ -6,24 +6,23 @@ import asyncio, signal, sys
 import consts as c
 
 
-logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, level=logging.INFO)
+logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, level=logging.INFO) # TODO
 
-card_timer = Timer(0, None)
+card_timer = Timer(0, None) # TODO
 daily_timer = Timer(0, None)
 farm_timer = Timer(0, None)
-# TODO? custom macros(remembers user's actions and replicates)(possibly json) and custom timers
 
-reset_time = time(21, 5, 0, 0)
+reset_time = time(0, 10, 0, 0) # TODO
 
 client = TelegramClient('anon', c.api_id, c.api_hash)
 
 
-def txt_to_sec(text): # GOOD
+def txt_to_sec(text): # PARTIAL
     time = re.findall(c.patterns['txt_to_sec'], text)
     return timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2])).total_seconds()
 
 
-async def send_msg(target, text): # GOOD
+async def send_msg(target, text): # PARTIAL
     await client.send_message(target, text)
     logging.info('sent "%s"', text)
 def schedule_msg(loop, target, text):
@@ -35,7 +34,7 @@ async def macro_buy(e, r, q): # PARTIAL
     try:
         async with client.conversation(e.chat_id, timeout=10) as conv:
             await conv.send_message(c.cmds['ps'])
-            while (resp := await conv.get_response()).sender_id != c.target_id: pass
+            while (resp := await conv.get_response()).sender_id != c.target_id: pass # TODO
             await resp.click(int(r/2), r%2)
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
@@ -65,7 +64,7 @@ async def macro_upgrade(e, r, q): # PARTIAL
             for i in range(q):
                 await conv.send_message(c.cmds['up'])
                 while (resp := await conv.get_response()).sender_id != c.target_id: pass
-                for bs in resp.buttons:
+                for bs in resp.buttons: # TODO
                     for b in bs:
                         if c.rars[r] in b.text.lower():
                             await b.click()
@@ -94,7 +93,7 @@ async def macro_sell(e, r, q):
     ismatch = False
     try:
         async with client.conversation(e.chat_id, timeout=10) as conv:
-            for i in range(1 if q<0 else q):
+            for i in range(q):
                 if q < 0: await conv.send_message(c.cmds['sa'])
                 else: await conv.send_message(c.cmds['mp'])
                 while (resp := await conv.get_response()).sender_id != c.target_id: pass
@@ -103,10 +102,7 @@ async def macro_sell(e, r, q):
                         if c.rars[r] in b.text.lower():
                             await b.click()
                             ismatch = True
-                if not ismatch:
-                    logging.info(f'button text didn\'t match {c.rars[r]}, cancelled')
-                    await e.reply(f'button text didn\'t match {c.rars[r]}')
-                    return
+                if not ismatch: raise IndexError
                 if q < 0:
                     while True:
                         resp = await conv.get_response()
@@ -127,8 +123,8 @@ async def macro_sell(e, r, q):
         await e.reply(f'qunatity "{q}" not found') # ???
 
 
-@client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler']))
-async def cmd_handler(e): # GOOD
+@client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler'])) # TODO
+async def cmd_handler(e): # PARTIAL
     text = e.pattern_match.group(1)
     for key in c.cmds:
         if text == key:
@@ -168,13 +164,13 @@ async def macro_handler(e): # PARTIAL
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
-async def spam_handler(e): # GOOD
+async def spam_handler(e): # PARTIAL
     logging.info('deleting')
     await e.delete()
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['card_handler']))
-async def card_handler(e): # GOOD
+async def card_handler(e): # PARTIAL
     if c.rars[0] in e.text.lower():
         await macro_upgrade(e, 0, 1)
     logging.info('sending cmd')
@@ -182,7 +178,7 @@ async def card_handler(e): # GOOD
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['cardt_handler']))
-async def cardt_handler(e): # GOOD
+async def cardt_handler(e): # PARTIAL
     logging.info('scheduling cmd')
     global card_timer
     card_timer.cancel()
@@ -196,7 +192,7 @@ async def cardt_handler(e): # GOOD
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['daily_handler']))
-async def daily_handler(e): # GOOD
+async def daily_handler(e): # PARTIAL
     logging.info('triggered, clicking btn')
     await e.message.click(0, 0)
     logging.info('clicked, sending cmd')
@@ -204,7 +200,7 @@ async def daily_handler(e): # GOOD
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['dailyt_handler']))
-async def dailyt_handler(e): # GOOD
+async def dailyt_handler(e): # PARTIAL
     logging.info('triggered, scheduling cmd')
     global daily_timer
     daily_timer.cancel()
@@ -217,7 +213,7 @@ async def dailyt_handler(e): # GOOD
     logging.info('waiting for %i seconds(%i m)', wait, int(wait/60))
 
 
-@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=r'(?s)(?=.*Ваша майнинг ферма.*)'))
+@client.on(events.NewMessage(outgoing=True, pattern=r'(?s)(?=.*Ваша майнинг ферма.*)'))
 async def farm_handler(e): # TODO? possibly merge with other reset events
     logging.info('triggered')
     income = re.search(r'фермой: (\d+),?(\d+)?', e.text)
@@ -232,9 +228,9 @@ async def farm_handler(e): # TODO? possibly merge with other reset events
     logging.info(f'waiting for {wait}')
 
     
-@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler']))
+@client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler'])) # TODO
 @client.on(events.MessageEdited(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler']))
-async def trade_handler(e): # PARTIALY
+async def trade_handler(e): # PARTIAL
     text = e.pattern_match.group(1)
     if 'от @' in text:
         logging.info('allowing')
