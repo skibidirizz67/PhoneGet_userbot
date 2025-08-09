@@ -1,3 +1,5 @@
+import json
+
 # TODO? move all customizable text to json
 f = open('api_id.txt', 'r')
 api_id = f.read()
@@ -11,7 +13,18 @@ target = '@phonegetcardsbot'
 target_id = 7808172033
 chats = '@phonegetcardsbot'
 
-tradelist = ['dikiy_opezdal', 'ladzepo_yikid'] # TODO
+timeout = 10
+flood_prev = 0.6
+
+def arr2regex(arr):
+    result = ''
+    for i in arr:
+        result += i + '|'
+    return result[:-1]
+
+with open('whitelist.json', 'r') as f:
+    whitelist = json.load(f)
+wtregex = arr2regex(whitelist)
 
 rars = {
     0: 'ширп',
@@ -23,17 +36,16 @@ rars = {
     6: 'арт',
     7: 'фант'
 }
+rarsregex = arr2regex(rars.values())
 
 patterns = {
     'txt_to_sec'     : r'(\d+)\s*(?:ч|м|с)',
     'cmd_handler'    : r'^!(.+)',
     'macro_handler'  : r'^\.(.+)', # TODO
     'spam_handler'   : r'(?is).*розыгрыш.*|.*подписка на каналы.*',
-    'card_handler'   : r'(?s)(?=.*Вам выпал телефон!)',
-    'cardt_handler'  : r'(?s)(?=.*Вы сможете выбить карту еще раз через)',
-    'daily_handler'  : r'(?s)(?=.*Ежедневные награды:)',
-    'dailyt_handler' : r'(?s)(?=.*Новая награда будет доступна завтра)',
-    'trade_handler'  : r'(?s).*(от @(dikiy_opezdal|ladzepo_yikid)|(@(dikiy_opezdal|ladzepo_yikid).*✅.*Вы|ПОДТВЕРДИТЕ)).*' # TODO
+    'card_handler'   : rf'(?is).*(выпал.*({rarsregex}).*|выбить.*).*',
+    'daily_handler'  : r'(?s).*(награды:.*|завтра.*).*',
+    'trade_handler'  : rf'(?s).*(от @({wtregex})|(@({wtregex}).*✅.*Вы|ПОДТВЕРДИТЕ)).*'
 }
 
 cmds = {
