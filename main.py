@@ -23,7 +23,7 @@ def txt_to_sec(text):
 async def safe_click(matrix, text):
     for row in matrix:
         for btn in row:
-            if text in btn.text.lower():
+            if text.lower() in btn.text.lower():
                 await btn.click()
                 return
     raise IndexError
@@ -50,7 +50,7 @@ async def macro_buy(e, r, q): # PARTIAL
     try:
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
             await conv.send_message(c.cmds['ps'])
-            safe_get_resp(conv, c.target_id) # TODO discover how it works and include click in it
+            resp = await safe_get_resp(conv, c.target_id) # TODO discover how it works and include click in it
             await safe_click(resp.buttons, c.rars[r])
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
@@ -75,12 +75,12 @@ async def macro_upgrade(e, r, q): # PARTIAL
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
             for i in range(q):
                 await conv.send_message(c.cmds['up'])
-                safe_get_resp(conv, c.target_id)
+                resp = await safe_get_resp(conv, c.target_id)
                 await safe_click(resp.buttons, c.rars[r])
                 await asyncio.sleep(c.flood_prev)
                 resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
-                safe_get_resp(conv, c.target_id)
+                resp = await safe_get_resp(conv, c.target_id)
                 await resp.click(0, 0)
                 await asyncio.sleep(c.flood_prev)
                 resp = await conv.get_edit(resp.id-1)
@@ -101,15 +101,15 @@ async def macro_sell(e, r, q):
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
             for i in range(q):
                 await conv.send_message(c.cmds['sa' if q == 2**16 else 'mp'])
-                safe_get_resp(conv, c.target_id)
+                resp = await safe_get_resp(conv, c.target_id)
                 await safe_click(resp.buttons, c.rars[r]) # TODO check if works
-                if q == 2*16: safe_get_resp(conv, c.target_id)
+                if q == 2*16: resp = await safe_get_resp(conv, c.target_id)
                 else: resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
                 if q < 0: return
                 resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
-                safe_get_resp(conv, c.target_id)
+                resp = await safe_get_resp(conv, c.target_id)
                 await resp.click(0, 0)
     except TimeoutError:
         timeout_msg(e, c.timeout)
