@@ -1,4 +1,4 @@
-import json
+import json, os
 
 # TODO? move all customizable text to json
 f = open('api_id.txt', 'r')
@@ -14,7 +14,10 @@ target_id = 7808172033
 chats = '@phonegetcardsbot'
 
 timeout = 10
-flood_prev = 0.6
+flood_prev = 0.75
+
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phones_list.json'), 'r') as f:
+    phonesDB = json.load(f)
 
 def arr2regex(arr):
     result = ''

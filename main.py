@@ -63,14 +63,17 @@ async def macro_buy(e, r, q): # PARTIAL
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
     except TimeoutError:
-        timeout_msg(e, c.timeout)
+        await timeout_msg(e, c.timeout)
     except IndexError:
-        index_msg(e, q)
+        await index_msg(e, q)
 
 
 async def macro_upgrade(e, r, q): # PARTIAL
     logging.info(f'{r} | {q}')
-    lost = upgraded = 0
+    lost = []
+    upgraded = []
+    source = []
+    history = ''
     try:
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
             for i in range(q):
@@ -81,18 +84,33 @@ async def macro_upgrade(e, r, q): # PARTIAL
                 resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
                 resp = await safe_get_resp(conv, c.target_id)
+                key = re.search(r'телефон\s.{1}\s(.+)\.', resp.text).group(1)
+                source.append(c.phonesDB[str(r)].get(key, 0)) # TOFIX
                 await resp.click(0, 0)
                 await asyncio.sleep(c.flood_prev)
                 resp = await conv.get_edit(resp.id-1)
-                if 'Неудача!' in resp.text: lost += 1
-                elif 'Успех!' in resp.text: upgraded += 1
+                value = int(re.sub(',', '', re.search(r': (.*) ТОчек', resp.text).group(1)))
+                if 'Неудача!' in resp.text:
+                    lost.append(value)
+                    history += f'\n❌ {key} ({source[len(source)-1]:,}) =[x0.0]=> LOST (0)'
+                elif 'Успех!' in resp.text:
+                    upgraded.append(value)
+                    history += f'\n✅ {key} ({source[len(source)-1]:,}) =[x{round(upgraded[len(upgraded)-1]/source[len(source)-1], 2)}]=> {re.search(r'телефон:\s.{1}\s(.+)\n', resp.text).group(1)} ({upgraded[len(upgraded)-1]:,})'
                 logging.info('%i complete', i)
     except TimeoutError:
-        timeout_msg(e, c.timeout)
+        await timeout_msg(e, c.timeout)
+    except KeyError:
+        logging.error('keyerror')
     except IndexError:
-        if q != 2**16 or lost+upgraded == 0: index_msg(e, c.rars[r])
-    if lost+upgraded == 0: return
-    await e.reply(f'```Statistics\n\n{upgraded} / {lost+upgraded} => {upgraded/(lost+upgraded)}```') # \n\n{upgraded_sum} - {source_sum} => {upgraded_sum-source_sum} [x{upgraded_sum/source_sum}]
+        if q != 2**16 or len(source) == 0: await index_msg(e, c.rars[r])
+    if len(source) == 0: return
+    rate = round(len(upgraded)/len(source), 2)
+    profit = sum(upgraded)-sum(source)
+    mprof = round(sum(upgraded)/sum(source), 2)
+    await e.reply(f'<pre>Statistics\n\n'\
+        f'>rates\n{len(upgraded)} / {len(source)} => {rate}\n\n'\
+        f'>profit\n{sum(source):,} - {sum(lost):,} => {sum(upgraded):,} ({profit:,})\n\n'\
+        f'>summary\n{rate*100}% | x{mprof}\n+{max(profit, 0):,} | {sum(upgraded):,} | -{sum(lost):,}</pre> <blockquote expandable>Details: {history}</blockquote>', parse_mode='html')
 
 
 async def macro_sell(e, r, q):
@@ -112,9 +130,9 @@ async def macro_sell(e, r, q):
                 resp = await safe_get_resp(conv, c.target_id)
                 await resp.click(0, 0)
     except TimeoutError:
-        timeout_msg(e, c.timeout)
+        await timeout_msg(e, c.timeout)
     except IndexError:
-        index_msg(e, c.rars[r])
+        await index_msg(e, c.rars[r])
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler'])) # TODO
@@ -136,13 +154,51 @@ async def farm_calculate(e): # PARTIAL
         await e.edit(f'{total:,}')
 
 
+async def trade_add(e, r, q):
+    logging.info(f'{r} | {q}')
+    if e.is_reply:
+        reply = await e.get_reply_message()
+        try:
+            async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
+                for i in range(q):
+                    await safe_click(reply.buttons, 'Добавить телефон')
+                    resp = await conv.get_edit(reply.id-1)
+                    await safe_click(resp.buttons, c.rars[r])
+                    resp = await conv.get_edit(resp.id-2)
+                    await asyncio.sleep(c.flood_prev)
+                    await resp.click(0, 0)
+                    resp = await conv.get_edit(resp.id-2)
+                    await asyncio.sleep(c.flood_prev)
+                    logging.info('%i complete', i)
+        except TimeoutError:
+            await timeout_msg(e, c.timeout)
+        except IndexError:
+            await index_msg(e, c.rars[r])
+
+
+async def print_who(e, n):
+    msg = ''
+    for r in c.phonesDB:
+        for p in c.phonesDB[r]:
+            if n.lower() in p.lower():
+                msg += f'<b>Model</b>: {p}\n<b>Rarity</b>: {c.rars[int(r)]}\n<b>Price</b>: {c.phonesDB[r][p]}\n<b>Selling price</b>: {c.phonesDB[r][p]*0.75}\n\n'
+    if len(msg) > 0:
+        await e.reply(f'<blockquote>'+msg+'</blockquote>', parse_mode='html')
+    else: 
+        await e.reply('Not found')
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
 async def macro_handler(e): # PARTIAL
-    macro = re.search(r'^\.([a-z]+)', e.text)
+    macro = re.search(r'^\.([a-z]+)\s(.+)', e.text)
     flags = dict(re.findall(r'-([a-z]{1})(-?\d+)', e.text)) # TODO: single group
 
     r = int(flags.get('r', 0))
     q = int(flags.get('q', 0))
+    n = flags.get('n', '*')
+    m = int(flags.get('m', 0))
+    x = int(flags.get('x', 2**32))
+    s = None
 
     if macro.group(1) == 'buy':
         await macro_buy(e, r, q-1)
@@ -154,6 +210,14 @@ async def macro_handler(e): # PARTIAL
         await macro_sell(e, r, q)
     elif macro.group(1) == 'cti':
         await farm_calculate(e)
+    elif macro.group(1) == 'tdi':
+        if q < 0: q = 2**16
+        await trade_add(e, r, q)
+    elif macro.group(1) == 'who':
+        await print_who(e, macro.group(2))
+    elif macro.group(1) == 'gps':
+        from get_phones import get_phones
+        await get_phones(client, logging)
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
@@ -204,7 +268,7 @@ async def daily_handler(e): # PARTIAL
     text = e.pattern_match
     offset = txt_to_sec(text.group(1))
     if offset:
-        await schedule_msg(e, c.cmds[tc], offset, 600)
+        await schedule_msg(e, c.cmds['er'], offset, 600)
     else:
         try:
             await safe_click(e.buttons, 'Забрать✅')
@@ -212,7 +276,7 @@ async def daily_handler(e): # PARTIAL
         except IndexError:
             await index_msg(e, 'Забрать✅')
         await e.reply(c.cmds['er'])
-        logging.info(f'sent {c.cmds['tc']}')
+        logging.info(f'sent {c.cmds['er']}')
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=r'(?s)(?=.*Ваша майнинг ферма.*)'))
@@ -220,7 +284,7 @@ async def farm_handler(e): # TODO? possibly merge with other reset events
     logging.info('called')
     income = re.search(r'фермой: (\d+),?(\d+)?', e.text)
     if int(income.group(1) + (income.group(2) or '')) > 0:
-        logging.info('getting income')
+        logging.info(f'getting income {income.group(1) + income.group(2)}')
         await safe_click(e.buttons, 'снять деньги с фермы')
     offset = datetime.combine(date.min, reset_time) - datetime.combine(date.min, datetime.now().time())
     if offset < timedelta(0): offset = timedelta(hours=24) + offset
