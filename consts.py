@@ -1,4 +1,5 @@
 import json, os
+from telethon import TelegramClient
 
 # TODO? move all customizable text to json
 f = open('api_id.txt', 'r')
@@ -16,8 +17,10 @@ chats = '@phonegetcardsbot'
 timeout = 10
 flood_prev = 0.75
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phones_list.json'), 'r') as f:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phonesDB.json'), 'r') as f:
     phonesDB = json.load(f)
+
+client = TelegramClient('anon', api_id, api_hash)
 
 def arr2regex(arr):
     result = ''
