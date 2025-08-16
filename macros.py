@@ -140,17 +140,30 @@ async def print_who(e, n):
         await e.reply('Not found')
 
 
+async def dup_schedule(e, q):
+    initial_offset = timedelta(seconds=0)
+    msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=e.chat_id, hash=0))
+    for m in msgs.messages:
+        if m.message == c.cmds['tc']:
+            initial_offset = m.date-datetime.now(UTC)
+            break
+    for i in range(q, start=1):
+        await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*c.tcreload), 1000)
+    await e.edit(f'`.dtc -q{q}`\ndone')
+
+
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
 async def macro_handler(e): # PARTIAL
     macro = re.search(r'^\.([a-z]+)', e.text)
+    text = re.search(r'^\.[a-z]+.*-t(.*);\s?', e.text)
     flags = dict(re.findall(r'-([a-z]{1})(-?\d+)', e.text)) # TODO: single group
 
     r = int(flags.get('r', 0))
     q = int(flags.get('q', 0))
-    n = flags.get('n', '*')
+    t = None
+    if text: t = text.group(1)
     m = int(flags.get('m', 0))
     x = int(flags.get('x', 2**32))
-    s = None
 
     if macro.group(1) == 'buy':
         await macro_buy(e, r, q-1)
@@ -166,7 +179,12 @@ async def macro_handler(e): # PARTIAL
         if q < 0: q = 2**16
         await trade_add(e, r, q)
     elif macro.group(1) == 'who':
-        await print_who(e, macro.group(2))
+        await print_who(e, t)
     elif macro.group(1) == 'gps':
         from get_phones import get_phones
         await get_phones(client, logging)
+    elif macro.group(1) == 'dtc':
+        await dup_schedule(e, q)
+    elif macro.group(1) == 'dam':
+        await unschedule_dups(e.chat_id, t, datetime.now(UTC), 0) # TOFIX: delete last one
+        await e.edit(f'`.dam -t{t};`\ndone')

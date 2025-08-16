@@ -9,30 +9,6 @@ from consts import client
 reset_time = time(0, 10, 0, 0) # TODO
 
 
-async def unschedule_dups(chat, text, date, minimal):
-    exact = False
-    msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=chat, hash=0))
-    for m in msgs.messages:
-        if m.message == text:
-            diff = (m.date-date).total_seconds()
-            if diff < 1:
-                if exact:
-                    await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))
-                else:
-                    exact = True
-            elif diff < minimal:
-                await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))
-    return exact
-
-
-async def schedule_msg(e, text, offset, minimal):
-    schedule = datetime.now(UTC) + offset + timedelta(seconds=1)
-    exact = await unschedule_dups(e.chat_id, text, schedule, minimal)
-    if not exact:
-        await e.reply(text, schedule=schedule)
-        logging.info(f'scheduled to {schedule}')
-
-
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
 async def spam_handler(e): # PARTIAL
     logging.info('deleting')

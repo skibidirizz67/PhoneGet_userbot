@@ -11,8 +11,6 @@ from consts import client
 
 logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, level=logging.INFO) # TODO
 
-#client = TelegramClient('anon', c.api_id, c.api_hash)
-
 loop = None
 
 

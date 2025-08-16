@@ -28,8 +28,11 @@ def arr2regex(arr):
         result += i + '|'
     return result[:-1]
 
-with open('whitelist.json', 'r') as f:
-    whitelist = json.load(f)
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
+    whitelist = settings['WL']
+    tcreload = settings['TCR']
+
 wtregex = arr2regex(whitelist)
 
 rars = {
