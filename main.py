@@ -2,6 +2,8 @@ from telethon import TelegramClient, events, functions
 import logging, re
 from datetime import timedelta, datetime, time, date, UTC
 import asyncio, signal, sys
+from tabulate import tabulate
+import os
 
 import handlers
 
@@ -26,7 +28,7 @@ async def init():
     if stc: await client.send_message(c.target_id, c.cmds['tc'])
     if ser: await client.send_message(c.target_id, c.cmds['er'])
     if stf: await client.send_message(c.target_id, c.cmds['tf'])
-
+    
 
 def terminate(signum, frame):
     logging.info('STOP')

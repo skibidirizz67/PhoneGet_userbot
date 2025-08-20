@@ -10,7 +10,6 @@ def txt_to_sec(text):
     if len(time) < 1: return False
     return timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))
 
-
 async def safe_click(matrix, text):
     for row in matrix:
         for btn in row:
@@ -18,6 +17,17 @@ async def safe_click(matrix, text):
                 await btn.click()
                 return
     raise IndexError
+
+
+async def safe_click_scroll(conv, matrix, text):
+    logging.info('hi')
+    try: await safe_click(matrix, text)
+    except IndexError:
+        logging.info('ie')
+        await safe_click(matrix, '➡️')
+        resp = await conv.get_edit()
+        logging.info('ok')
+        await safe_click_scroll(conv, resp.buttons, text)
 
 
 async def safe_get_resp(conv, target_id):
