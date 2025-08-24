@@ -9,6 +9,7 @@ import handlers
 
 import consts as c
 from consts import client
+from shared import terminate
 
 
 logging.basicConfig(filename=c.log_path, filemode='a', format=c.log_format, level=logging.INFO) # TODO
@@ -28,12 +29,6 @@ async def init():
     if stc: await client.send_message(c.target_id, c.cmds['tc'])
     if ser: await client.send_message(c.target_id, c.cmds['er'])
     if stf: await client.send_message(c.target_id, c.cmds['tf'])
-    
-
-def terminate(signum, frame):
-    logging.info('STOP')
-    logging.info('STOP complete, terminating')
-    sys.exit(0)
 
 
 logging.info('\n\nSTARTING')

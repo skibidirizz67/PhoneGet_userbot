@@ -1,4 +1,5 @@
 import re
+import os, sys
 import logging
 from datetime import timedelta, datetime, UTC
 from telethon import TelegramClient, events, functions
@@ -35,7 +36,6 @@ async def safe_get_resp(conv, target_id):
     while (resp := await conv.get_response()).sender_id != target_id: pass
     return resp
 
-
 async def timeout_msg(e, timeout):
     logging.error(f'timeout {timeout}s')
     await e.reply(f'timeout, bot didn\'t respond in {timeout}s')
@@ -50,7 +50,8 @@ async def unschedule_dups(chat, text, date, minimal):
     msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=chat, hash=0))
     for m in msgs.messages:
         if m.message == text:
-            diff = (date - m.date).total_seconds()
+            diff = abs((date - m.date).total_seconds())
+            logging.info(diff)
             if diff < 1:
                 if exact:
                     await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))
@@ -63,7 +64,12 @@ async def unschedule_dups(chat, text, date, minimal):
 
 async def schedule_msg(e, text, offset, minimal):
     schedule = datetime.now(UTC) + offset + timedelta(seconds=1)
-    exact = await unschedule_dups(e.chat_id, text, schedule, minimal)
-    if not exact:
+    if not (await unschedule_dups(e.chat_id, text, schedule, minimal)):
         await e.reply(text, schedule=schedule)
         logging.info(f'scheduled "{text}" to {schedule}')
+
+
+def terminate(signum, frame):
+    logging.info('STOP')
+    logging.info('STOP complete, terminating')
+    sys.exit(0)

@@ -1,7 +1,7 @@
 import re
-import os
+import os, sys
 import logging
-from telethon import TelegramClient, events, functions
+from telethon import TelegramClient, events, functions, tl
 from datetime import timedelta, datetime, time, date, UTC
 import asyncio, signal, sys
 import consts as c
@@ -107,6 +107,7 @@ async def macro_sell(e, r, q, n):
     except IndexError:
         await index_msg(e, c.rars[r])
     
+
 async def farm_calculate(e): # PARTIAL
     if e.is_reply:
         total = 0
@@ -116,7 +117,7 @@ async def farm_calculate(e): # PARTIAL
         await e.edit(f'{total:,}')
 
 
-async def trade_add(e, r, q):
+async def trade_add(e, r, q, n):
     logging.info(f'{r} | {q}')
     if e.is_reply:
         reply = await e.get_reply_message()
@@ -130,7 +131,7 @@ async def trade_add(e, r, q):
                     resp = await conv.get_edit(resp.id-2)
                     resp_wait = datetime.now() - resp_wait
                     await asyncio.sleep(max(c.flood_prev-resp_wait.total_seconds(), 0))
-                    await resp.click(0, 0)
+                    await safe_click(resp.buttons, n)
                     resp_wait = datetime.now()
                     resp = await conv.get_edit(resp.id-2)
                     resp_wait = datetime.now() - resp_wait
@@ -156,16 +157,20 @@ async def print_who(e, n):
 
 async def dup_schedule(e, q):
     initial_offset = timedelta(seconds=0)
-    msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=e.chat_id, hash=0))
+    try:
+        async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
+            await conv.send_message(c.cmds['tc'])
+            resp = await safe_get_resp(conv, c.target_id)
+            msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=e.chat_id, hash=0))
+    except TimeoutError:
+        await timeout_msg(e, c.timeout)
     for m in msgs.messages:
         if m.message == c.cmds['tc']:
             initial_offset = m.date-datetime.now(UTC)
             break
-    for i in range(q, 1):
+    for i in range(q):
         await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*c.tcreload), 1000)
     await e.edit(f'`.dtc -q{q}`\ndone')
-    for i in range(q, 1):
-        await schedule_msg(e, c.cmds['tc'])
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
@@ -197,15 +202,33 @@ async def macro_handler(e): # PARTIAL
     elif macro.group(1) == 'cti':
         await farm_calculate(e)
     elif macro.group(1) == 'tdi':
-        if q < 0: q = 2**16
-        await trade_add(e, r, q)
+        longest = max(len(r), len(q), len(n))
+        for i in range(longest):
+            await trade_add(e, si(r, i), si(q, i), si(n, i  ))
     elif macro.group(1) == 'who':
-        await print_who(e, n[0])
+        for i in range(len(n)):
+            await print_who(e, n[i])
     elif macro.group(1) == 'gps':
         from get_phones import get_phones
         await get_phones(client, logging)
     elif macro.group(1) == 'dtc':
-        await dup_schedule(e, q)
+        for i in range(len(q)):
+            await dup_schedule(e, q[i])
     elif macro.group(1) == 'dam':
-        await unschedule_dups(e.chat_id, t, datetime.now(UTC), 0) # TOFIX: delete last one
-        await e.edit(f'`.dam -t{t};`\ndone')
+        for i in range(len(n)):
+            await unschedule_dups(e.chat_id, n[i], datetime.now(UTC), 100000000) # TOFIX: delete last one
+        await e.edit(f'`.dam -n"{n[0]}";`\ndone')
+    elif macro.group(1) == 'ctl':
+        if r[0] == 1:
+            python = sys.executable
+            os.execv(python, [python] + sys.argv)
+        elif q[0] == 1:
+            async with client.conversation(e.chat_id) as conv:
+                await conv.send_message('Terminating in 10s, `.tac` to cancel...')
+                await asyncio.sleep(10)
+                await conv.send_message('Terminating...')
+                terminate(0, 0)
+    elif macro.group(1) == 'tac':
+        async with client.conversation(e.chat_id, exclusive=False) as conv:
+            await conv.cancel_all()
+            await e.edit(f'`.tac`\ndone')
