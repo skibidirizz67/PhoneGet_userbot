@@ -9,21 +9,21 @@ from consts import client
 from shared import *
 
 
-async def macro_buy(e, r, q, n): # PARTIAL
+async def macro_buy(e, r, q, n, p):
     logging.info(f'{r} | {q}')
     try:
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
             await conv.send_message(c.cmds['ps'])
-            resp = await safe_get_resp(conv, c.target_id) # TODO discover how it works and include click in it
+            resp = await safe_get_resp(conv, c.target_id) # TODO discover how it works and include click in it?
             await safe_click(resp.buttons, c.rars[r])
             resp = await conv.get_edit(resp.id-1)
-            await safe_click_scroll(conv, resp.buttons, n)
+            await safe_click_scroll(conv, resp.buttons, n, p)
             resp = await conv.get_edit(resp.id-1)
             await resp.click(1, 0)
             resp = await conv.get_edit(resp.id-1)
             btns = resp.buttons
             if q < 0: await resp.click(len(btns)-2, len(btns[len(btns)-2])-1)
-            else: await safe_click(btns, f'{q+1}') # TODO check if works
+            else: await safe_click(btns, f'{q}') # TODO check if works
             resp = await conv.get_edit(resp.id-1)
             await resp.click(0, 0)
     except TimeoutError:
@@ -32,7 +32,7 @@ async def macro_buy(e, r, q, n): # PARTIAL
         await index_msg(e, q)
 
 
-async def macro_upgrade(e, r, q, n): # PARTIAL
+async def macro_upgrade(e, r, q, n, p):
     logging.info(f'{r} | {q}')
     lost = []
     upgraded = []
@@ -48,7 +48,7 @@ async def macro_upgrade(e, r, q, n): # PARTIAL
                 await safe_click(resp.buttons, c.rars[r])
                 await asyncio.sleep(max(c.flood_prev-resp_wait.total_seconds(), 0))
                 resp = await conv.get_edit(resp.id-1)
-                await safe_click_scroll(conv, resp.buttons, n)
+                await safe_click_scroll(conv, resp.buttons, n, p)
                 resp = await safe_get_resp(conv, c.target_id)
                 key = re.search(r'телефон\s.{1}\s(.+)\.', resp.text).group(1)
                 source.append(c.phonesDB[str(r)].get(key, 0)) # TOFIX
@@ -84,7 +84,7 @@ async def macro_upgrade(e, r, q, n): # PARTIAL
         f'>summary\n{rate*100}% | x{mprof}\n+{max(profit, 0):,} | {sum(upgraded):,} | -{sum(lost):,}</pre> <blockquote expandable>Details: {history}</blockquote>', parse_mode='html')
 
 
-async def macro_sell(e, r, q, n):
+async def macro_sell(e, r, q, n, p):
     logging.info(f'{r} | {q}')
     try:
         async with client.conversation(e.chat_id, timeout=c.timeout) as conv:
@@ -97,7 +97,7 @@ async def macro_sell(e, r, q, n):
                     resp.click(0, 0)
                     return
                 resp = await conv.get_edit(resp.id-1)
-                await safe_click_scroll(conv, resp.buttons, n)
+                await safe_click_scroll(conv, resp.buttons, n, p)
                 resp = await conv.get_edit(resp.id-1)
                 await resp.click(0, 0)
                 resp = await safe_get_resp(conv, c.target_id)
@@ -108,7 +108,7 @@ async def macro_sell(e, r, q, n):
         await index_msg(e, c.rars[r])
     
 
-async def farm_calculate(e): # PARTIAL
+async def farm_calculate(e):
     if e.is_reply:
         total = 0
         reply = await e.get_reply_message()
@@ -117,7 +117,7 @@ async def farm_calculate(e): # PARTIAL
         await e.edit(f'{total:,}')
 
 
-async def trade_add(e, r, q, n):
+async def trade_add(e, r, q, n, p):
     logging.info(f'{r} | {q}')
     if e.is_reply:
         reply = await e.get_reply_message()
@@ -131,24 +131,32 @@ async def trade_add(e, r, q, n):
                     resp = await conv.get_edit(resp.id-2)
                     resp_wait = datetime.now() - resp_wait
                     await asyncio.sleep(max(c.flood_prev-resp_wait.total_seconds(), 0))
-                    await safe_click(resp.buttons, n)
+                    await safe_click_scroll(conv, resp.buttons, n, p)
                     resp_wait = datetime.now()
                     resp = await conv.get_edit(resp.id-2)
                     resp_wait = datetime.now() - resp_wait
                     await asyncio.sleep(max(c.flood_prev-resp_wait.total_seconds(), 0))
                     logging.info('%i complete', i)
         except TimeoutError:
-            await timeout_msg(e, c.timeout)
+            if i < 6:
+                await timeout_msg(e, c.timeout)
         except IndexError:
             await index_msg(e, c.rars[r])
 
 
-async def print_who(e, n):
+async def print_who(e, n, p, q):
+    def loop():
+        nonlocal msg
+        for r in c.phonesDB:
+            i = 0
+            for k in c.phonesDB[r]:
+                if (n.lower() in k.lower()) and ((p == c.phonesDB[r][k]) if p > 0 else True):
+                    i += 1
+                    if i > q: return
+                    msg += f'<b>Model</b>: {k}\n<b>Rarity</b>: {c.rars[int(r)]}\n<b>Price</b>: {c.phonesDB[r][k]}\n<b>Selling price</b>: {c.phonesDB[r][k]*0.75}\n\n'
+    q = q if q > 0 else 2**32
     msg = ''
-    for r in c.phonesDB:
-        for p in c.phonesDB[r]:
-            if n.lower() in p.lower():
-                msg += f'<b>Model</b>: {p}\n<b>Rarity</b>: {c.rars[int(r)]}\n<b>Price</b>: {c.phonesDB[r][p]}\n<b>Selling price</b>: {c.phonesDB[r][p]*0.75}\n\n'
+    loop()
     if len(msg) > 0:
         await e.reply(f'<blockquote>'+msg+'</blockquote>', parse_mode='html')
     else: 
@@ -162,73 +170,94 @@ async def dup_schedule(e, q):
             await conv.send_message(c.cmds['tc'])
             resp = await safe_get_resp(conv, c.target_id)
             msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=e.chat_id, hash=0))
+            for m in msgs.messages:
+                if m.message == c.cmds['tc']:
+                    initial_offset = m.date-datetime.now(UTC)
+                    break
     except TimeoutError:
-        await timeout_msg(e, c.timeout)
-    for m in msgs.messages:
-        if m.message == c.cmds['tc']:
-            initial_offset = m.date-datetime.now(UTC)
-            break
+        initial_offset = c.tcreload
     for i in range(q):
-        await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*c.tcreload), 1000)
-    await e.edit(f'`.dtc -q{q}`\ndone')
+        await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*(c.tcreload+5)), c.tcreload)
+    await e.edit(f'`{e.text}`\n\ndone')
+
+
+def uprofit_calculate(e, n):
+    for r in c.phonesDB:
+        for k in c.phonesDB[r]:
+            if n.lower() in k.lower():
+                pass # take price and compare to avg price of next rarity + display general profit from stat
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['macro_handler']))
-async def macro_handler(e): # PARTIAL
+async def macro_handler(e):
     macro = re.search(r'^\.([a-z]+)', e.text)
     flags = re.findall(r'-([a-z]{1})(?:([0-9\,]+)|(?:\"(.+)\"\,?)+)', e.text)
     for i, t in enumerate(flags): flags[i] = tuple(x for x in t if x != '')
     flags = dict(flags)
 
-    r = list(map(int, flags.get('r', '0').split(','))) # rarity
-    q = list(map(int, flags.get('q', '0').split(','))) # quantity
+    r = list(map(int, flags.get('r', '0').split(','))) # rarity/reboot/repeat
+    q = list(map(int, flags.get('q', '0').split(','))) # quantity/quit
     p = list(map(int, flags.get('p', '0').split(','))) # price
+    s = list(map(int, flags.get('s', '0').split(','))) # seconds/sleep
     n = flags.get('n', '').replace('"', '').split(',') # name
 
     def si(a, i): return a[min(i, len(a)-1)]
 
-    if macro.group(1) == 'buy':
-        longest = max(len(r), len(q), len(n))
-        for i in range(longest):
-            await macro_buy(e, si(r, i), si(q, i)-1, si(n, i))
-    elif macro.group(1) == 'upg':
-        longest = max(len(r), len(q), len(n))
-        for i in range(longest):
-            await macro_upgrade(e, si(r, i), si(q, i), si(n, i))
-    elif macro.group(1) == 'sell':
-        longest = max(len(r), len(q), len(n))
-        for i in range(longest):
-            await macro_sell(e, si(r, i), si(q, i), si(n, i))
-    elif macro.group(1) == 'cti':
-        await farm_calculate(e)
-    elif macro.group(1) == 'tdi':
-        longest = max(len(r), len(q), len(n))
-        for i in range(longest):
-            await trade_add(e, si(r, i), si(q, i), si(n, i  ))
-    elif macro.group(1) == 'who':
-        for i in range(len(n)):
-            await print_who(e, n[i])
-    elif macro.group(1) == 'gps':
-        from get_phones import get_phones
-        await get_phones(client, logging)
-    elif macro.group(1) == 'dtc':
-        for i in range(len(q)):
-            await dup_schedule(e, q[i])
-    elif macro.group(1) == 'dam':
-        for i in range(len(n)):
-            await unschedule_dups(e.chat_id, n[i], datetime.now(UTC), 100000000) # TOFIX: delete last one
-        await e.edit(f'`.dam -n"{n[0]}";`\ndone')
-    elif macro.group(1) == 'ctl':
-        if r[0] == 1:
-            python = sys.executable
-            os.execv(python, [python] + sys.argv)
-        elif q[0] == 1:
-            async with client.conversation(e.chat_id) as conv:
-                await conv.send_message('Terminating in 10s, `.tac` to cancel...')
-                await asyncio.sleep(10)
-                await conv.send_message('Terminating...')
-                terminate(0, 0)
-    elif macro.group(1) == 'tac':
-        async with client.conversation(e.chat_id, exclusive=False) as conv:
-            await conv.cancel_all()
-            await e.edit(f'`.tac`\ndone')
+    match macro.group(1):
+        case 'buy':
+            longest = max(len(r), len(q), len(n), len(p))
+            for i in range(longest):
+                await macro_buy(e, si(r, i), si(q, i), si(n, i), si(p, i))
+        case 'upg':
+            longest = max(len(r), len(q), len(n), len(p))
+            for i in range(longest):
+                await macro_upgrade(e, si(r, i), si(q, i), si(n, i), si(p, i))
+        case 'sell':
+            longest = max(len(r), len(q), len(n), len(p))
+            for i in range(longest):
+                await macro_sell(e, si(r, i), si(q, i), si(n, i), si(p, i))
+        case 'cti':
+            await farm_calculate(e)
+        case 'tdi':
+            longest = max(len(r), len(q), len(n), len(p))
+            for i in range(longest):
+                await trade_add(e, si(r, i), si(q, i), si(n, i), si(p, i))
+        case 'who':
+            longest = max(len(n), len(p), len(q))
+            for i in range(longest):
+                await print_who(e, si(n, i), si(p, i), si(q, i))
+        case 'gps':
+            from get_phones import get_phones
+            await get_phones(client, logging)
+        case 'dtc':
+            for i in range(len(q)):
+                await dup_schedule(e, q[i])
+        case 'dam':
+            for i in range(len(n)):
+                await unschedule_dups(e.chat_id, n[i], datetime.now(UTC), 100000000)
+            await e.edit(f'`{e.text}`\n\ndone')
+        case 'ctl':
+            if r[0] == 1:
+                python = sys.executable
+                os.execv(python, [python] + sys.argv)
+            elif q[0] == 1:
+                async with client.conversation(e.chat_id) as conv:
+                    await conv.send_message('Terminating in 10s, `.tac` to cancel...')
+                    await asyncio.sleep(10)
+                    await conv.send_message('Terminating...')
+                    terminate(0, 0)
+            elif s[0] == 1:
+                pass # bot_sleep()
+        case 'tac':
+            async with client.conversation(e.chat_id, exclusive=False) as conv:
+                await conv.cancel_all()
+                await e.edit(f'`{e.text}`\n\ndone')
+        case 'scm':
+            longest = max(len(n), len(s))
+            for i in range(longest):
+                await schedule_msg(e, si(n, i), timedelta(seconds=si(s, i)), si(s, i))
+                if si(r, i) == 1:
+                    await schedule_msg(e, e.text, timedelta(seconds=si(s, i)), si(s, i))
+        case 'pup':
+            for i in range(n):
+                await uprofit_calculate(e, n[i])

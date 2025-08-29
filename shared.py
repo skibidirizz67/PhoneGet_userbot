@@ -11,6 +11,7 @@ def txt_to_sec(text):
     if len(time) < 1: return False
     return timedelta(hours=int(time[0]), minutes=int(time[1]), seconds=int(time[2]))
 
+
 async def safe_click(matrix, text):
     for row in matrix:
         for btn in row:
@@ -20,15 +21,23 @@ async def safe_click(matrix, text):
     raise IndexError
 
 
-async def safe_click_scroll(conv, matrix, text):
-    logging.info('hi')
-    try: await safe_click(matrix, text)
+def find_phone(n, p):
+    for r in c.phonesDB:
+        for k in c.phonesDB[r]:
+            if (n.lower() in k.lower()) and ((p == c.phonesDB[r][k]) if p > 0 else True): # notice diff in name comparison
+                return True
+    return False
+
+
+async def safe_click_scroll(conv, matrix, text, price):
+    try:
+        if find_phone(text, price):
+            await safe_click(matrix, text)
+        else: raise IndexError
     except IndexError:
-        logging.info('ie')
         await safe_click(matrix, '➡️')
         resp = await conv.get_edit()
-        logging.info('ok')
-        await safe_click_scroll(conv, resp.buttons, text)
+        await safe_click_scroll(conv, resp.buttons, text, price)
 
 
 async def safe_get_resp(conv, target_id):
@@ -51,7 +60,6 @@ async def unschedule_dups(chat, text, date, minimal):
     for m in msgs.messages:
         if m.message == text:
             diff = abs((date - m.date).total_seconds())
-            logging.info(diff)
             if diff < 1:
                 if exact:
                     await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))

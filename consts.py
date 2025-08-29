@@ -1,4 +1,5 @@
 import json, os
+from dataclasses import dataclass
 from telethon import TelegramClient
 
 # TODO? move all customizable text to json
@@ -66,7 +67,7 @@ cmds = {
     **dict.fromkeys(['ап', 'up'], 'Апгрейд'),
     **dict.fromkeys(['ен', 'er'], 'Ежедневная награда'),
     **dict.fromkeys(['са', 'sa'], '/sellall'),
-    **dict.fromkeys(['тл', 'lt'], 'Таблица лидеров'),
+    **dict.fromkeys(['тл', 'lb'], 'Таблица лидеров'),
     **dict.fromkeys(['п',  'p'],  '/pay'),
     **dict.fromkeys(['ев', 'ev'], '/event'),
     **dict.fromkeys(['тр', 'tr'], '/trade'),

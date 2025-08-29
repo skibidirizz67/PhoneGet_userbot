@@ -10,30 +10,30 @@ reset_time = time(0, 10, 0, 0) # TODO
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['spam_handler']))
-async def spam_handler(e): # PARTIAL
+async def spam_handler(e):
     logging.info('deleting')
     await e.delete()
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['card_handler']))
-async def card_handler(e): # PARTIAL
+async def card_handler(e):
     logging.info('called')
     text = e.pattern_match
     offset = txt_to_sec(text.group(1))
     if offset:
-        await schedule_msg(e, c.cmds['tc'], offset, 600)
+        await schedule_msg(e, c.cmds['tc'], offset, offset)
     elif re.search(rf'({c.rarsregex})', text.group(2).lower()):
         await e.reply(c.cmds['tc'])
         logging.info(f'sent {c.cmds['tc']}')
 
 
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['daily_handler']))
-async def daily_handler(e): # PARTIAL
+async def daily_handler(e):
     logging.info('called')
     text = e.pattern_match
     offset = txt_to_sec(text.group(1))
     if offset:
-        await schedule_msg(e, c.cmds['er'], offset, 600)
+        await schedule_msg(e, c.cmds['er'], offset, offset)
     else:
         try:
             await safe_click(e.buttons, 'Забрать✅')
@@ -53,12 +53,12 @@ async def farm_handler(e): # TODO? possibly merge with other reset events
         await safe_click(e.buttons, 'снять деньги с фермы')
     offset = datetime.combine(date.min, reset_time) - datetime.combine(date.min, datetime.now().time())
     if offset < timedelta(0): offset = timedelta(hours=24) + offset
-    await schedule_msg(e, c.cmds['tf'], offset, 600)
+    await schedule_msg(e, c.cmds['tf'], offset, offset)
 
     
 @client.on(events.NewMessage(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler'])) # TODO
 @client.on(events.MessageEdited(from_users=c.target, chats=c.chats, pattern=c.patterns['trade_handler']))
-async def trade_handler(e): # PARTIAL
+async def trade_handler(e):
     text = e.pattern_match.group(1)
     if 'от @' in text:
         logging.info('allowing')
@@ -78,7 +78,7 @@ async def trade_handler(e): # PARTIAL
 
 
 @client.on(events.NewMessage(outgoing=True, pattern=c.patterns['cmd_handler'])) # TODO
-async def cmd_handler(e): # PARTIAL
+async def cmd_handler(e):
     text = e.pattern_match.group(1)
     for key in c.cmds:
         if text == key:

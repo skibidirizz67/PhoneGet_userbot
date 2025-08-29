@@ -1,6 +1,49 @@
 {
-    "WL": [
+    "whitelist": [
         "username"
     ],
-    "TCR": 10800
+    "tcard_reload": 10800,
+
+    "target": "@phonegetcardsbot",
+
+    "log_path": "phoneget_userbot.log",
+    "log_format": "[%(asctime)s] [%(levelname)s] [%(funcName)s]: %(message)s",
+    "target_id": 7808172033,
+    "chats": "@phonegetcardsbot",
+    "timeout": 10,
+    "flood_prev": 0.75,
+    "cmds": [
+        "!",
+        [["tc"], "ТКарточка"],
+        [["ta"], "ТАкк"],
+        [["mp"], "Мои телефоны"],
+        [["ps"], "Магазин телефонов"],
+        [["us"], "Магазин улучшений"],
+        [["up"], "Апгрейд"],
+        [["er"], "Ежедневная награда"],
+        [["sa"], "/sellall"],
+        [["lb"], "Таблица лидеров"],
+        [["p"], "/pay"],
+        [["ev"], "/event"],
+        [["tr"], "/trade"],
+        [["av"], "/avito"],
+        [["tf"], "/tfarm"],
+        [["h"], "placeholder"]
+    ],
+    "macros": [
+        ".",
+        [["buy"], "macro_buy"],
+        [["upg"], "macro_upgrade"],
+        [["sell"], "macro_sell"],
+        [["cti"], "farm_calculate"],
+        [["tdi"], "trade_add"],
+        [["who"], "print_who"],
+        [["gps"], "dup_schedule"],
+        [["dtc"], "unchedule_dups"],
+        [["dam"], "control"],
+        [["ctl"], ""],
+        [["tac"], ""],
+        [["scm"], ""],
+        [["pup"], ""],
+    ] 
 }
