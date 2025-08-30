@@ -177,7 +177,7 @@ async def dup_schedule(e, q):
     except TimeoutError:
         initial_offset = c.tcreload
     for i in range(q):
-        await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*(c.tcreload+5)), c.tcreload)
+        await schedule_msg(e, c.cmds['tc'], initial_offset + timedelta(seconds=i*(c.tcreload+60)), c.tcreload)
     await e.edit(f'`{e.text}`\n\ndone')
 
 
@@ -261,3 +261,11 @@ async def macro_handler(e):
         case 'pup':
             for i in range(n):
                 await uprofit_calculate(e, n[i])
+        case 'idk':
+            files = [
+                os.path.join("/home/user0/videos/camera", f)
+                for f in os.listdir("/home/user0/videos/camera")
+            ]
+            files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            await e.edit(f'loading {files[q[0]]}...')
+            await e.reply(file=files[q[0]])
