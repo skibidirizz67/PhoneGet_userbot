@@ -9,6 +9,7 @@ import handlers
 
 import consts as c
 from consts import client
+from consts import settings
 from shared import terminate
 
 
@@ -21,14 +22,14 @@ async def init():
     global loop
     loop = asyncio.get_event_loop()
     stc = ser = stf = True
-    msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=c.target_id, hash=0))
+    msgs = await client(functions.messages.GetScheduledHistoryRequest(peer=settings.target_id, hash=0))
     for m in msgs.messages:
-        if m.message == c.cmds['tc']: stc = False
-        elif m.message == c.cmds['er']: ser = False
-        elif m.message == c.cmds['tf']: stf = False
-    if stc: await client.send_message(c.target_id, c.cmds['tc'])
-    if ser: await client.send_message(c.target_id, c.cmds['er'])
-    if stf: await client.send_message(c.target_id, c.cmds['tf'])
+        if m.message == settings.cmds['tc']: stc = False
+        elif m.message == settings.cmds['er']: ser = False
+        elif m.message == settings.cmds['tf']: stf = False
+    if stc: await client.send_message(settings.target_id, settings.cmds['tc'])
+    if ser: await client.send_message(settings.target_id, settings.cmds['er'])
+    if stf: await client.send_message(settings.target_id, settings.cmds['tf'])
 
 
 logging.info('\n\nSTARTING')

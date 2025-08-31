@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta, datetime, UTC
 from telethon import TelegramClient, events, functions
 from consts import client
+from consts import settings
 import consts as c
 
 def txt_to_sec(text):
@@ -62,11 +63,11 @@ async def unschedule_dups(chat, text, date, minimal):
             diff = abs((date - m.date).total_seconds())
             if diff < 1:
                 if exact:
-                    await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))
+                    await client(functions.messages.DeleteScheduledMessagesRequest(peer=settings.target_id, id=[m.id]))
                 else:
                     exact = True
             elif diff < minimal:
-                await client(functions.messages.DeleteScheduledMessagesRequest(peer=c.target_id, id=[m.id]))
+                await client(functions.messages.DeleteScheduledMessagesRequest(peer=settings.target_id, id=[m.id]))
     return exact
 
 

@@ -2,7 +2,19 @@ import json, os
 from dataclasses import dataclass
 from telethon import TelegramClient
 
-# TODO? move all customizable text to json
+@dataclass
+class Settings:
+    whitelist: list
+    tcard_reload: int
+    reset_time: int
+    chats: list
+    timeout: int
+    flood_prev: int
+    target: str
+    target_id: int
+    cmds: dict
+    macros: list
+
 f = open('api_id.txt', 'r')
 api_id = f.read()
 f = open('api_hash.txt', 'r')
@@ -11,12 +23,21 @@ api_hash = f.read()
 log_path = 'phoneget_userbot.log'
 log_format = '[%(asctime)s] [%(levelname)s] [%(funcName)s]: %(message)s'
 
-target = '@phonegetcardsbot'
-target_id = 7808172033
-chats = '@phonegetcardsbot'
-
-timeout = 10
-flood_prev = 0.75
+with open('settings.json', 'r') as f:
+    temp = json.load(f)
+    settings = Settings(
+        whitelist=temp.get('whitelist', list()),
+        tcard_reload=temp.get('tcard_reload', 10800),
+        reset_time=temp.get('reset_time', 0),
+        chats=list(),
+        timeout=temp.get('timeout', 10),
+        flood_prev=temp.get('flood_prev', 1),
+        target=temp.get('target', '@phonegetcardsbot'),
+        target_id=temp.get('target_id', 7808172033),
+        cmds=temp.get('cmds', dict()),
+        macros=temp.get('macros', list()),
+    )
+    settings.chats = temp.get('chats', [settings.target])
 
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'phonesDB.json'), 'r') as f:
     phonesDB = json.load(f)
@@ -29,12 +50,7 @@ def arr2regex(arr):
         result += i + '|'
     return result[:-1]
 
-with open('settings.json', 'r') as f:
-    settings = json.load(f)
-    whitelist = settings['WL']
-    tcreload = settings['TCR']
-
-wtregex = arr2regex(whitelist)
+wtregex = arr2regex(settings.whitelist)
 
 rars = {
     0: 'ширп',
