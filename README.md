@@ -33,6 +33,7 @@ macros are doing something with a bot and usually have parameters such as `r`(ra
  * `.ctl -n -v -r -q -s` - bot control; `-r1` to reload; `-q1` to shutdown; `-s1` to sleep(WIP); `-n"param_name" -v` to edit parameter; `-n"show"` to show all settings
  * `.scm -n -s` - schedule any message `-n` with delay `-s`
  * `.pup -n` - same as .who but displays profit after upgrade
+* `.tac` - terminate all conversations
 
 parameters are iterative and most are unnecessary, for `-q` specify `-1` for infinity 
 
